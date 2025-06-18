@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
 import { printerApi } from '../services/printerApi';
+import { printLogService } from '../services/printLogService'; // 추가
+import { globalState } from '../services/globalState'; // 추가
 
 declare global {
   interface Window {
@@ -117,6 +119,29 @@ const PrintingScreen = () => {
       const printResult = await printerApi.print();
       if (!printResult.success) {
         throw new Error('인쇄에 실패했습니다.');
+      }
+
+      setProgress(90);
+      setStatus('로그 저장 중...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 🔥 인쇄 완료 후 logs 테이블에 기록 저장
+      try {
+        const printLogData = globalState.getPrintLogData();
+        console.log('📝 인쇄 로그 데이터:', printLogData);
+        
+        const logResult = await printLogService.savePrintLog(printLogData);
+        
+        if (!logResult.success) {
+          console.error('⚠️ 인쇄 로그 저장 실패:', logResult.error);
+          // 인쇄는 성공했으므로 로그 실패해도 계속 진행
+          // 사용자에게는 성공으로 표시하되, 콘솔에만 오류 기록
+        } else {
+          console.log('✅ 인쇄 로그 저장 성공');
+        }
+      } catch (logError) {
+        console.error('⚠️ 인쇄 로그 저장 중 예외 발생:', logError);
+        // 인쇄는 성공했으므로 로그 실패해도 계속 진행
       }
 
       setProgress(100);

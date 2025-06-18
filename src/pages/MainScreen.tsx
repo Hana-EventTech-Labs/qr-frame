@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { kioskValidationService } from '../services/kioskValidationService'
+import { globalState } from '../services/globalState' // 추가
 
 // 타입 선언
 declare global {
@@ -48,6 +49,14 @@ const MainScreen = () => {
       if (result.success) {
         console.log('✅ 키오스크 검증 성공:', result)
         setKioskInfo(result)
+        
+        // 🔥 여기에 전역 상태에 키오스크 정보 저장 추가
+        if (result.eventInfo && result.validInfo) {
+          globalState.setKioskInfo(
+            result.eventInfo.no, // event_number
+            result.eventInfo.kiosk_id // kiosk_id
+          );
+        }
         
         // 유효기간 정보 포맷팅
         const formatted = kioskValidationService.formatValidInfo(result.validInfo)
