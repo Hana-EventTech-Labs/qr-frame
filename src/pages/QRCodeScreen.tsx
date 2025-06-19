@@ -5,9 +5,11 @@ import { QRCodeSVG } from 'qrcode.react'
 // 캐릭터 이미지 데이터 (public/characters/ 폴더에 이미지 저장)
 const CHARACTER_IMAGES = [
   { id: 'char1', name: '귀여운 곰', image: './characters/bear.png' },
-  // { id: 'char2', name: '사랑스러운 고양이', image: './characters/cat.png' },
-  // { id: 'char3', name: '친근한 강아지', image: './characters/dog.png' },
-  // { id: 'char4', name: '행복한 토끼', image: './characters/rabbit.png' },
+  { id: 'char2', name: '사랑스러운 고양이', image: './characters/cat.png' },
+  { id: 'char3', name: '친근한 강아지', image: './characters/dog.png' },
+  { id: 'char4', name: '고양이', image: './characters/cat.png' },
+  { id: 'char5', name: '꽃', image: './characters/flower.png' },
+  { id: 'char6', name: '하트', image: './characters/heart.png' },
 ]
 
 const QRCodeScreen = () => {
