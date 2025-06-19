@@ -214,8 +214,8 @@ const FrameSelectionScreen = () => {
     }
 
     const framePreviewStyle: CSSProperties = {
-        width: '120px',
-        height: '120px',
+        width: '160px',
+        height: '160px',
         backgroundColor: '#e5e7eb',
         borderRadius: '8px',
         display: 'flex',

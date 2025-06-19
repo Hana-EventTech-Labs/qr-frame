@@ -23,6 +23,9 @@ interface ElectronAPI {
   
   interface WindowEnv {
     downloadPath: () => string;
+    cwd: () => string;
+    resourcesPath: () => string;
+    isDev: () => boolean;
   }
   
   declare global {

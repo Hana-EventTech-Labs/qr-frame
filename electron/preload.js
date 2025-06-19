@@ -244,7 +244,9 @@ const os = require('os');
 
 contextBridge.exposeInMainWorld('env', {
   cwd: () => process.cwd(),
-  downloadPath: () => path.join(os.homedir(), 'Downloads')
+  downloadPath: () => path.join(os.homedir(), 'Downloads'),
+  resourcesPath: () => process.resourcesPath, // 추가
+  isDev: () => isDev // 추가
 });
 
 // 파일 저장 API 추가

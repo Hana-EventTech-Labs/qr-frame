@@ -12,6 +12,8 @@ declare global {
     env: {
       cwd: () => string;
       downloadPath: () => string;
+      resourcesPath: () => string;
+      isDev: () => boolean;
     };
   }
 }
@@ -84,12 +86,24 @@ const PrintingScreen = () => {
       // 🔥 프레임 먼저 그리기 (배경)
       if (selectedFrame) {
         console.log(`🖼️ 프레임 ${selectedFrame} 그리기 시작...`);
-        
-        // 현재 작업 디렉토리 기준으로 프레임 경로 생성
-        const cwd = window.env.cwd();
-        const framePath = `${cwd}\\public\\frames\\${selectedFrame}.png`;
+
+        // 개발/빌드 환경에 따른 프레임 경로 설정
+        let framePath: string;
+        const isDev = window.env.isDev();
+
+        if (isDev) {
+          // 개발 환경: 현재 작업 디렉토리 기준
+          const cwd = window.env.cwd();
+          framePath = `${cwd}\\public\\frames\\${selectedFrame}.png`;
+        } else {
+          // 빌드 환경: process.resourcesPath 기준
+          const resourcesPath = window.env.resourcesPath();
+          framePath = `${resourcesPath}\\public\\frames\\${selectedFrame}.png`;
+        }
+
         console.log('프레임 경로:', framePath);
-        
+        console.log('환경:', isDev ? '개발' : '빌드');
+
         const frameResult = await printerApi.drawImage({
           page: 0,     // 페이지 번호
           panel: 1,    // 패널 번호 (프론트)
@@ -147,9 +161,9 @@ const PrintingScreen = () => {
       try {
         const printLogData = globalState.getPrintLogData();
         console.log('📝 인쇄 로그 데이터:', printLogData);
-        
+
         const logResult = await printLogService.savePrintLog(printLogData);
-        
+
         if (!logResult.success) {
           console.error('⚠️ 인쇄 로그 저장 실패:', logResult.error);
           // 인쇄는 성공했으므로 로그 실패해도 계속 진행
