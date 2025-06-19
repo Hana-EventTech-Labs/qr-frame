@@ -1,15 +1,3 @@
-
-// 임시 프레임 템플릿 데이터 (나중에 실제 이미지로 교체)
-// const FRAME_TEMPLATES = [
-//   { id: 'frame1', name: '클래식 화이트', preview: './frames/frame1.png' },
-//   { id: 'frame2', name: '로즈 골드', preview: './frames/frame2.png' },
-//   { id: 'frame3', name: '빈티지 브라운', preview: './frames/frame3.png' },
-//   { id: 'frame4', name: '모던 블랙', preview: './frames/frame4.png' },
-//   { id: 'frame5', name: '파스텔 핑크', preview: './frames/frame5.png' },
-//   { id: 'frame6', name: '네이처 그린', preview: './frames/frame6.png' },
-//   { id: 'frame7', name: '엘레간트 퍼플', preview: './frames/frame7.png' },
-//   { id: 'frame8', name: '심플 그레이', preview: './frames/frame8.png' },
-// ]
 // 임시 프레임 템플릿 데이터 (온라인 플레이스홀더 이미지 사용)
 const FRAME_TEMPLATES = [
     { id: 'frame1', name: '클래식 화이트', preview: 'https://via.placeholder.com/120x120/ffffff/000000?text=Frame1' },
@@ -22,46 +10,54 @@ const FRAME_TEMPLATES = [
     { id: 'frame8', name: '심플 그레이', preview: 'https://via.placeholder.com/120x120/808080/ffffff?text=Frame8' },
 ]
 
-// FrameSelectionScreen.tsx의 상단 import와 useEffect 수정
-
 import { useState, useEffect, CSSProperties } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-
 
 const FrameSelectionScreen = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+    const [imageType, setImageType] = useState<'photo' | 'character'>('photo') // 이미지 타입 구분
     const [selectedFrame, setSelectedFrame] = useState<string | null>(null)
     const [isNavigating, setIsNavigating] = useState(false)
 
     useEffect(() => {
-        // navigate state에서 이미지 가져오기
+        // navigate state에서 이미지와 타입 가져오기
         const stateImage = location.state?.uploadedImage
+        const stateImageType = location.state?.imageType || 'photo'
 
         if (stateImage) {
             setUploadedImage(stateImage)
-            console.log('이미지 로드 성공:', stateImage.substring(0, 50) + '...')
+            setImageType(stateImageType)
+            console.log('🖼️ 이미지 로드 성공:', stateImageType, stateImage.substring(0, 50) + '...')
         } else {
             // 이미지가 없으면 QR 화면으로 돌아가기
-            console.log('업로드된 이미지를 찾을 수 없습니다.')
+            console.log('❌ 업로드된 이미지를 찾을 수 없습니다.')
             navigate('/upload')
         }
     }, [navigate, location.state])
 
     const handleFrameSelect = (frameId: string) => {
         setSelectedFrame(frameId)
+        console.log('🖼️ 프레임 선택됨:', frameId)
     }
 
     const handlePrint = async () => {
         if (!selectedFrame || isNavigating) return
         setIsNavigating(true)
 
+        console.log('🖨️ 인쇄 준비:', {
+            hasImage: !!uploadedImage,
+            imageType,
+            selectedFrame
+        })
+
         // 선택된 프레임과 이미지 정보를 navigate state로 전달
         setTimeout(() => {
             navigate('/printing', {
                 state: {
                     uploadedImage: uploadedImage,
+                    imageType: imageType,
                     selectedFrame: selectedFrame
                 }
             })
@@ -72,6 +68,24 @@ const FrameSelectionScreen = () => {
         if (isNavigating) return
         setIsNavigating(true)
         navigate('/upload')
+    }
+
+    // 미리보기 이미지 렌더링 함수 (캐릭터/사진 구분해서 표시)
+    const renderPreviewImage = () => {
+        if (!uploadedImage) return null
+
+        return (
+            <img
+                src={uploadedImage}
+                alt={imageType === 'character' ? 'Selected Character' : 'Uploaded Photo'}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '2px',
+                }}
+            />
+        )
     }
 
     // 스타일 정의
@@ -120,6 +134,17 @@ const FrameSelectionScreen = () => {
         alignItems: 'center',
         paddingTop: '20px',
         marginBottom: '200px',
+    }
+
+    const imageTypeIndicatorStyle: CSSProperties = {
+        fontSize: '18px',
+        fontWeight: '600',
+        color: imageType === 'character' ? '#8b5cf6' : '#10b981',
+        marginBottom: '16px',
+        padding: '8px 16px',
+        backgroundColor: imageType === 'character' ? '#f3e8ff' : '#d1fae5',
+        borderRadius: '20px',
+        border: `2px solid ${imageType === 'character' ? '#8b5cf6' : '#10b981'}`,
     }
 
     const frameGridStyle: CSSProperties = {
@@ -244,6 +269,11 @@ const FrameSelectionScreen = () => {
 
             {/* 메인 컨텐츠 */}
             <div style={contentStyle}>
+                {/* 이미지 타입 표시 */}
+                <div style={imageTypeIndicatorStyle}>
+                    {imageType === 'character' ? '🎭 선택한 캐릭터' : '📷 업로드한 사진'}
+                </div>
+
                 {/* 프레임 그리드 */}
                 <div style={frameGridStyle}>
                     {FRAME_TEMPLATES.map((frame) => (
@@ -253,7 +283,7 @@ const FrameSelectionScreen = () => {
                             onClick={() => handleFrameSelect(frame.id)}
                         >
                             <div style={framePreviewStyle}>
-                                {/* 임시 미리보기 - 나중에 실제 프레임 이미지와 사용자 이미지 합성 */}
+                                {/* 프레임 내부에 실제 이미지 또는 캐릭터 표시 */}
                                 <div style={{
                                     width: '80px',
                                     height: '60px',
@@ -261,20 +291,12 @@ const FrameSelectionScreen = () => {
                                     border: '2px solid #9ca3af',
                                     borderRadius: '4px',
                                     position: 'relative',
+                                    overflow: 'hidden',
                                 }}>
-                                    {uploadedImage && (
-                                        <img
-                                            src={uploadedImage}
-                                            alt="User"
-                                            style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                objectFit: 'cover',
-                                                borderRadius: '2px',
-                                            }}
-                                        />
-                                    )}
+                                    {renderPreviewImage()}
                                 </div>
+                                
+                                {/* 선택 표시 */}
                                 {selectedFrame === frame.id && (
                                     <div style={{
                                         position: 'absolute',
