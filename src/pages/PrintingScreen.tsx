@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
 import { printerApi } from '../services/printerApi';
-import { printLogService } from '../services/printLogService'; // 추가
-import { globalState } from '../services/globalState'; // 추가
+import { printLogService } from '../services/printLogService';
+import { globalState } from '../services/globalState';
 
 declare global {
   interface Window {
@@ -17,7 +17,6 @@ declare global {
 }
 
 const PrintingScreen = () => {
-  // const navigate = useNavigate();
   const location = useLocation();
   const [dots, setDots] = useState('...');
   const [progress, setProgress] = useState(0);
@@ -46,14 +45,11 @@ const PrintingScreen = () => {
     }, 250);
 
     return () => {
-      // clearTimeout(timeoutId);
       clearInterval(dotsInterval);
       clearInterval(progressInterval);
       printerApi.closeDevice().catch(console.error);
     };
   }, []);
-
-  // PrintingScreen.tsx의 doPrint 함수 수정
 
   const doPrint = async () => {
     try {
@@ -81,35 +77,57 @@ const PrintingScreen = () => {
         throw new Error('프린터 연결에 실패했습니다.');
       }
 
-      setProgress(50);
+      setProgress(40);
       setStatus('이미지 처리 중...');
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // 사진 경로
-      const photoPath = `${window.env.downloadPath()}/photo.png`;
+      // 🔥 프레임 먼저 그리기 (배경)
+      if (selectedFrame) {
+        console.log(`🖼️ 프레임 ${selectedFrame} 그리기 시작...`);
+        
+        // 현재 작업 디렉토리 기준으로 프레임 경로 생성
+        const cwd = window.env.cwd();
+        const framePath = `${cwd}\\public\\frames\\${selectedFrame}.png`;
+        console.log('프레임 경로:', framePath);
+        
+        const frameResult = await printerApi.drawImage({
+          page: 0,     // 페이지 번호
+          panel: 1,    // 패널 번호 (프론트)
+          x: 0,        // 전체 카드 크기로 프레임 그리기
+          y: 0,
+          width: 635,  // 카드 전체 너비
+          height: 1010, // 카드 전체 높이
+          imagePath: framePath,
+        });
 
-      // 기본 이미지 출력
+        if (!frameResult.success) {
+          console.warn('⚠️ 프레임 그리기 실패, 계속 진행:', frameResult.error);
+          // 프레임 실패해도 사진은 인쇄하도록 계속 진행
+        } else {
+          console.log('✅ 프레임 그리기 성공');
+        }
+      }
+
+      setProgress(60);
+      setStatus('사진 인쇄 준비 중...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 🔥 사진 이미지 그리기 (프레임 위에)
+      const photoPath = `${window.env.downloadPath()}\\photo.png`;
+      console.log('사진 경로:', photoPath);
+
       const photoImgResult = await printerApi.drawImage({
         page: 0,
         panel: 1,
-        x: 46,
-        y: 90,
-        width: 543,
-        height: 442,
+        x: 46,        // 사진 영역 X 좌표
+        y: 90,        // 사진 영역 Y 좌표  
+        width: 543,   // 사진 영역 너비
+        height: 442,  // 사진 영역 높이
         imagePath: photoPath,
       });
 
       if (!photoImgResult.success) {
-        throw new Error('사진 이미지 그리기에 실패했습니다.');
-      }
-
-      setProgress(70);
-      setStatus('프레임 적용 중...');
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 프레임이 선택된 경우 프레임 이미지도 출력
-      if (selectedFrame) {
-        console.log(`프레임 ${selectedFrame} 적용 중...`);
+        throw new Error('사진 이미지 그리기에 실패했습니다: ' + photoImgResult.error);
       }
 
       setProgress(80);
@@ -118,7 +136,7 @@ const PrintingScreen = () => {
 
       const printResult = await printerApi.print();
       if (!printResult.success) {
-        throw new Error('인쇄에 실패했습니다.');
+        throw new Error('인쇄에 실패했습니다: ' + printResult.error);
       }
 
       setProgress(90);
@@ -161,11 +179,10 @@ const PrintingScreen = () => {
 
   // 메인 화면으로 돌아가기 함수
   const goToMainScreen = () => {
-    // navigate('/') 대신 window.location.hash 사용
     window.location.hash = '#/';
   };
 
-  // 스타일은 그대로 유지
+  // 스타일 정의
   const containerStyle: CSSProperties = {
     width: '100%',
     height: '100%',

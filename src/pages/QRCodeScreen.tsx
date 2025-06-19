@@ -2,9 +2,12 @@ import { useEffect, useRef, useState, CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 
-// 캐릭터 이미지 데이터 (실제 사용시에는 public/characters/ 폴더에 이미지 저장)
+// 캐릭터 이미지 데이터 (public/characters/ 폴더에 이미지 저장)
 const CHARACTER_IMAGES = [
   { id: 'char1', name: '귀여운 곰', image: './characters/bear.png' },
+  // { id: 'char2', name: '사랑스러운 고양이', image: './characters/cat.png' },
+  // { id: 'char3', name: '친근한 강아지', image: './characters/dog.png' },
+  // { id: 'char4', name: '행복한 토끼', image: './characters/rabbit.png' },
 ]
 
 const QRCodeScreen = () => {
@@ -241,6 +244,45 @@ const QRCodeScreen = () => {
     }
   }
 
+  // 캐릭터 이미지 렌더링 함수 (에러 처리 포함)
+  const renderCharacterImage = (character: typeof CHARACTER_IMAGES[0]) => {
+    return (
+      <img
+        src={character.image}
+        alt={character.name}
+        style={{
+          width: '150px',
+          height: '120px',
+          objectFit: 'cover',
+          borderRadius: '8px',
+          marginBottom: '10px',
+        }}
+        onError={(e) => {
+          console.error('캐릭터 이미지 로드 실패:', character.image);
+          const target = e.target as HTMLImageElement;
+          // 이미지 로드 실패시 기본 배경색과 텍스트 표시
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent) {
+            const placeholder = document.createElement('div');
+            placeholder.style.width = '150px';
+            placeholder.style.height = '120px';
+            placeholder.style.backgroundColor = '#e5e7eb';
+            placeholder.style.borderRadius = '8px';
+            placeholder.style.display = 'flex';
+            placeholder.style.alignItems = 'center';
+            placeholder.style.justifyContent = 'center';
+            placeholder.style.color = '#6b7280';
+            placeholder.style.fontSize = '14px';
+            placeholder.style.marginBottom = '10px';
+            placeholder.textContent = character.name;
+            parent.insertBefore(placeholder, target);
+          }
+        }}
+      />
+    );
+  };
+
   // 스타일 정의
   const containerStyle: CSSProperties = {
     width: '100%',
@@ -460,6 +502,16 @@ const QRCodeScreen = () => {
                   objectFit: 'contain',
                   borderRadius: '8px',
                 }}
+                onError={(e) => {
+                  console.error('선택된 캐릭터 이미지 로드 실패:', selectedCharacter);
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.style.backgroundColor = '#e5e7eb';
+                    parent.innerHTML = '<span style="color: #6b7280; font-size: 16px;">이미지를 불러올 수 없습니다</span>';
+                  }
+                }}
               />
             </div>
           )}
@@ -579,17 +631,7 @@ const QRCodeScreen = () => {
                     target.style.transform = 'scale(1)'
                   }}
                 >
-                  <img
-                    src={character.image}
-                    alt={character.name}
-                    style={{
-                      width: '150px',
-                      height: '120px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      marginBottom: '10px',
-                    }}
-                  />
+                  {renderCharacterImage(character)}
                   <span style={{
                     fontSize: '16px',
                     fontWeight: '600',

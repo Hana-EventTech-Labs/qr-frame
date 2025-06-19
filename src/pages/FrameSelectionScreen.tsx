@@ -1,13 +1,13 @@
-// 임시 프레임 템플릿 데이터 (온라인 플레이스홀더 이미지 사용)
+// 로컬 프레임 템플릿 데이터 (public/frames/ 폴더 사용)
 const FRAME_TEMPLATES = [
-    { id: 'frame1', name: '클래식 화이트', preview: 'https://via.placeholder.com/120x120/ffffff/000000?text=Frame1' },
-    { id: 'frame2', name: '로즈 골드', preview: 'https://via.placeholder.com/120x120/ffc0cb/000000?text=Frame2' },
-    { id: 'frame3', name: '빈티지 브라운', preview: 'https://via.placeholder.com/120x120/8b4513/ffffff?text=Frame3' },
-    { id: 'frame4', name: '모던 블랙', preview: 'https://via.placeholder.com/120x120/000000/ffffff?text=Frame4' },
-    { id: 'frame5', name: '파스텔 핑크', preview: 'https://via.placeholder.com/120x120/ffb6c1/000000?text=Frame5' },
-    { id: 'frame6', name: '네이처 그린', preview: 'https://via.placeholder.com/120x120/90ee90/000000?text=Frame6' },
-    { id: 'frame7', name: '엘레간트 퍼플', preview: 'https://via.placeholder.com/120x120/dda0dd/000000?text=Frame7' },
-    { id: 'frame8', name: '심플 그레이', preview: 'https://via.placeholder.com/120x120/808080/ffffff?text=Frame8' },
+    { id: 'frame1', name: '클래식 화이트', preview: './frames/frame1.png' },
+    // { id: 'frame2', name: '로즈 골드', preview: './frames/frame2.png' },
+    // { id: 'frame3', name: '빈티지 브라운', preview: './frames/frame3.png' },
+    // { id: 'frame4', name: '모던 블랙', preview: './frames/frame4.png' },
+    // { id: 'frame5', name: '파스텔 핑크', preview: './frames/frame5.png' },
+    // { id: 'frame6', name: '네이처 그린', preview: './frames/frame6.png' },
+    // { id: 'frame7', name: '엘레간트 퍼플', preview: './frames/frame7.png' },
+    // { id: 'frame8', name: '심플 그레이', preview: './frames/frame8.png' },
 ]
 
 import { useState, useEffect, CSSProperties } from 'react'
@@ -84,9 +84,41 @@ const FrameSelectionScreen = () => {
                     objectFit: 'cover',
                     borderRadius: '2px',
                 }}
+                onError={(e) => {
+                    console.error('이미지 로드 실패:', uploadedImage);
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                }}
             />
         )
     }
+
+    // 프레임 미리보기 이미지 렌더링 함수
+    const renderFramePreview = (frame: typeof FRAME_TEMPLATES[0]) => {
+        return (
+            <img
+                src={frame.preview}
+                alt={frame.name}
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '4px',
+                }}
+                onError={(e) => {
+                    console.error('프레임 이미지 로드 실패:', frame.preview);
+                    const target = e.target as HTMLImageElement;
+                    // 이미지 로드 실패시 기본 색상 배경 표시
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                        parent.style.backgroundColor = '#e5e7eb';
+                        parent.innerHTML = `<span style="color: #6b7280; font-size: 12px; text-align: center;">${frame.name}</span>`;
+                    }
+                }}
+            />
+        );
+    };
 
     // 스타일 정의
     const containerStyle: CSSProperties = {
@@ -283,15 +315,21 @@ const FrameSelectionScreen = () => {
                             onClick={() => handleFrameSelect(frame.id)}
                         >
                             <div style={framePreviewStyle}>
+                                {/* 프레임 미리보기 이미지 */}
+                                {renderFramePreview(frame)}
+                                
                                 {/* 프레임 내부에 실제 이미지 또는 캐릭터 표시 */}
                                 <div style={{
-                                    width: '80px',
-                                    height: '60px',
+                                    position: 'absolute',
+                                    top: '10px',
+                                    left: '10px',
+                                    width: '100px',
+                                    height: '80px',
                                     backgroundColor: '#d1d5db',
                                     border: '2px solid #9ca3af',
                                     borderRadius: '4px',
-                                    position: 'relative',
                                     overflow: 'hidden',
+                                    zIndex: 1,
                                 }}>
                                     {renderPreviewImage()}
                                 </div>
@@ -304,6 +342,7 @@ const FrameSelectionScreen = () => {
                                         right: '8px',
                                         color: '#ef4444',
                                         fontSize: '20px',
+                                        zIndex: 2,
                                     }}>
                                         ✓
                                     </div>

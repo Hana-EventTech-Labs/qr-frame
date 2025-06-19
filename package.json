@@ -5,7 +5,7 @@
   "main": "electron/main.js",
   "type": "commonjs",
   "build": {
-    "asar": true,
+    "asar": false,
     "files": [
       "dist/**",
       {
@@ -17,6 +17,10 @@
       {
         "from": "electron/resources/SmartComm2.dll",
         "to": "resources/SmartComm2.dll"
+      },
+      {
+        "from": "public",
+        "to": "public"
       }
     ],
     "win": {
