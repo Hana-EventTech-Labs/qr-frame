@@ -1,8 +1,8 @@
 const { app, BrowserWindow, globalShortcut, ipcMain } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
-const fetch = require('node-fetch'); // 추가
-const iconv = require('iconv-lite'); // 추가
+const fetch = require('cross-fetch');
+const iconv = require('iconv-lite');
 
 let win;
 
@@ -18,6 +18,8 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       sandbox: false,
+      nodeIntegration: false, // 명시적으로 false
+      enableRemoteModule: false, // 추가
       preload: path.join(__dirname, 'preload.js'),
       additionalArguments: [isDev ? '--dev' : '--prod'],
     },
@@ -36,10 +38,9 @@ function createWindow() {
 
 // 🔥 KS_NET 결제 요청 메시지 빌드 함수
 function buildReqMessage() {
-  // 실제 KS_NET 프로토콜에 맞게 구성해야 합니다
-  // 이 예시는 기존 코드를 그대로 사용
+  // 실제 KSCAT 설정에 맞게 구성
   let reqMsg = "";
-  reqMsg = "AP0452IC010200NDPT0TEST03    000000000000                                                                                                                                                       00000000001004000000000000000000000091000000000913000000000000                                                                                                                                                                                                       X";
+  reqMsg = "AP0452IC010200NAT0416478A    000000000000                                                                                                                                                       00000000005000000000000000000000000091000000000913000000000000                                                                                                                                                                                                       X";
   return reqMsg;
 }
 
@@ -47,9 +48,9 @@ function buildReqMessage() {
 ipcMain.handle("send-payment-request", async (event, requestData) => {
   try {
     console.log('💳 KS_NET 결제 요청 시작...');
+
+    const reqMessage = buildReqMessage();
     
-    // const reqMessage = buildReqMessage();
-    const reqMessage = requestData.REQ
 
     // URLSearchParams를 사용해 요청 데이터를 구성 (URL 인코딩)
     const params = new URLSearchParams();
@@ -58,7 +59,7 @@ ipcMain.handle("send-payment-request", async (event, requestData) => {
     params.append('callback', 'jsonp1234567898123123');
 
     const encodedParams = params.toString();
-    const url = 'http://127.0.0.1:27098'; // KS_NET 결제 단말기 URL
+    const url = 'http://127.0.0.1:27098'; // KS_NET 결제 단말기 URL (기본 포트)
 
     console.log('💳 결제 요청 URL:', url);
     console.log('💳 결제 요청 데이터:', encodedParams);
@@ -96,8 +97,8 @@ ipcMain.handle("send-payment-request", async (event, requestData) => {
         jsonData = JSON.parse(text);
       } catch (parseError) {
         console.error("❌ JSON 파싱 실패:", parseError);
-        jsonData = { 
-          error: "응답 파싱 실패", 
+        jsonData = {
+          error: "응답 파싱 실패",
           rawResponse: text.substring(0, 500) // 처음 500자만 로그에 기록
         };
       }
@@ -106,9 +107,9 @@ ipcMain.handle("send-payment-request", async (event, requestData) => {
     return jsonData;
   } catch (error) {
     console.error("❌ 결제 요청 실패:", error);
-    return { 
-      error: "결제 요청 실패", 
-      details: error.message 
+    return {
+      error: "결제 요청 실패",
+      details: error.message
     };
   }
 });

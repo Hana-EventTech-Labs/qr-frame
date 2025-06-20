@@ -1,7 +1,6 @@
 import { useState, useEffect, CSSProperties } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
-
 // Window 인터페이스를 명시적으로 확장
 declare global {
   interface Window {
@@ -15,7 +14,7 @@ const PaymentScreen = () => {
   const [paymentStatus, setPaymentStatus] = useState<'waiting' | 'processing' | 'success' | 'failed'>('waiting')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isNavigating, setIsNavigating] = useState(false)
-  
+
   const FIXED_AMOUNT = 5000 // 고정 금액
 
   useEffect(() => {
@@ -28,66 +27,81 @@ const PaymentScreen = () => {
 
   // KS_NET 결제 요청 메시지 생성
   const buildPaymentRequest = () => {
-    // 기존 코드의 buildReqMessage() 로직 적용
-    const reqMessage = "AP0452IC010200NDPT0TEST03    000000000000                                                                                                                                                       00000000001004000000000000000000000091000000000913000000000000                                                                                                                                                                                                       X"
+    // 실제 KSCAT 설정 정보 사용
+    const reqMessage = "AP0452IC010200NAT0416478A    000000000000                                                                                                                                                       00000000005000000000000000000000000091000000000913000000000000                                                                                                                                                                                                       X"
     return reqMessage
   }
 
-  // 결제 요청 처리
   const handlePayment = async () => {
     if (paymentStatus === 'processing') return
-    
+
     setPaymentStatus('processing')
     setErrorMessage(null)
 
     try {
       console.log('💳 KS_NET 결제 요청 시작...')
-      
+
       const requestData = {
         REQ: buildPaymentRequest()
       }
 
-      // Electron의 결제 API 호출 - 타입 안전성 확보
+      console.log('💳 요청 데이터:', requestData)
+
       const electronAPI = window.electronAPI
       if (!electronAPI) {
         throw new Error('Electron API를 사용할 수 없습니다.')
       }
 
       const result = await electronAPI.sendPaymentRequest(requestData)
-      
-      console.log('💳 결제 응답:', result)
 
-      if (result?.error) {
-        throw new Error(result.error)
-      }
+      console.log('💳 결제 응답 전체:', result)
 
-      // 결제 성공 처리 (실제 응답에 따라 조건 수정 필요)
-      if (result) {
-        console.log('✅ 결제 성공')
-        setPaymentStatus('success')
+      // 🔥 KSCAT 응답 코드 기반 성공/실패 판단 수정
+      if (result?.RES) {
+        const responseCode = result.RES;
+        console.log('💳 응답 코드:', responseCode);
         
-        // 2초 후 인쇄 화면으로 이동
-        setTimeout(() => {
-          if (!isNavigating) {
-            setIsNavigating(true)
-            navigate('/printing', {
-              state: {
-                uploadedImage: location.state.uploadedImage,
-                imageType: location.state.imageType,
-                selectedFrame: location.state.selectedFrame,
-                paymentCompleted: true
-              }
-            })
-          }
-        }, 2000)
+        // KSCAT 응답 코드 분석
+        if (responseCode === '0000' || responseCode === '00') {
+          // 정상 승인
+          console.log('✅ 결제 성공 - 응답코드:', responseCode);
+          setPaymentStatus('success');
+          
+          setTimeout(() => {
+            if (!isNavigating) {
+              setIsNavigating(true);
+              navigate('/printing', {
+                state: {
+                  uploadedImage: location.state.uploadedImage,
+                  imageType: location.state.imageType,
+                  selectedFrame: location.state.selectedFrame,
+                  paymentCompleted: true,
+                  paymentResult: result // 결제 결과 정보도 전달
+                }
+              });
+            }
+          }, 2000);
+        } else {
+          // 결제 실패/오류
+          const errorMsg = result.MSG || `결제 실패 (코드: ${responseCode})`;
+          console.error('❌ 결제 실패 - 응답코드:', responseCode, '메시지:', errorMsg);
+          throw new Error(errorMsg);
+        }
+      } else if (result?.error) {
+        // 네트워크/통신 오류
+        console.error('💳 통신 오류:', result.error);
+        throw new Error(`통신 오류: ${result.error}`);
       } else {
-        throw new Error('결제 응답이 올바르지 않습니다.')
+        // 예상치 못한 응답 형태
+        console.error('💳 예상치 못한 응답:', result);
+        throw new Error('예상치 못한 응답 형태입니다.');
       }
 
     } catch (error) {
       console.error('❌ 결제 실패:', error)
       setPaymentStatus('failed')
-      setErrorMessage(error instanceof Error ? error.message : '결제 중 오류가 발생했습니다.')
+      const errorMsg = error instanceof Error ? error.message : '결제 중 오류가 발생했습니다.'
+      setErrorMessage(errorMsg)
     }
   }
 
@@ -228,7 +242,7 @@ const PaymentScreen = () => {
             </div>
           </>
         )
-        
+
       case 'processing':
         return (
           <>
@@ -240,7 +254,7 @@ const PaymentScreen = () => {
             </div>
           </>
         )
-        
+
       case 'success':
         return (
           <>
@@ -252,7 +266,7 @@ const PaymentScreen = () => {
             </div>
           </>
         )
-        
+
       case 'failed':
         return (
           <>
@@ -266,11 +280,11 @@ const PaymentScreen = () => {
               <button onClick={handleGoToMain} style={backButtonStyle}>
                 처음으로
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setPaymentStatus('waiting')
                   setErrorMessage(null)
-                }} 
+                }}
                 style={paymentButtonStyle}
               >
                 다시 시도

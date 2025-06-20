@@ -41,10 +41,10 @@
     "clean": "rd /s /q dist out && echo Cleaned!"
   },
   "dependencies": {
-    "electron-is-dev": "^2.0.0",
+    "cross-fetch": "^4.0.0",
+    "electron-is-dev": "^2.0.0", 
     "iconv-lite": "^0.6.3",
     "koffi": "^2.11.0",
-    "node-fetch": "^3.3.2",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
