@@ -48,7 +48,8 @@ ipcMain.handle("send-payment-request", async (event, requestData) => {
   try {
     console.log('💳 KS_NET 결제 요청 시작...');
     
-    const reqMessage = buildReqMessage();
+    // const reqMessage = buildReqMessage();
+    const reqMessage = requestData.REQ
 
     // URLSearchParams를 사용해 요청 데이터를 구성 (URL 인코딩)
     const params = new URLSearchParams();

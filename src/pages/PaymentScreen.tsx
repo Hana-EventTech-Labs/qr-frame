@@ -1,6 +1,14 @@
 import { useState, useEffect, CSSProperties } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
+
+// Window 인터페이스를 명시적으로 확장
+declare global {
+  interface Window {
+    electronAPI: ElectronAPI;
+  }
+}
+
 const PaymentScreen = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -39,8 +47,13 @@ const PaymentScreen = () => {
         REQ: buildPaymentRequest()
       }
 
-      // Electron의 결제 API 호출
-      const result = await window.electronAPI.sendPaymentRequest(requestData)
+      // Electron의 결제 API 호출 - 타입 안전성 확보
+      const electronAPI = window.electronAPI
+      if (!electronAPI) {
+        throw new Error('Electron API를 사용할 수 없습니다.')
+      }
+
+      const result = await electronAPI.sendPaymentRequest(requestData)
       
       console.log('💳 결제 응답:', result)
 

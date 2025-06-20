@@ -239,10 +239,14 @@ const QRCodeScreen = () => {
 
   // 앱 종료 함수
   const handleCloseApp = () => {
-    if (window.electronAPI) {
-      window.electronAPI.closeApp()
-    } else {
-      console.log('Electron API를 찾을 수 없습니다. 브라우저 환경에서는 앱을 종료할 수 없습니다.')
+    try {
+      if (window.electronAPI?.closeApp) {
+        window.electronAPI.closeApp()
+      } else {
+        console.log('Electron API를 찾을 수 없습니다. 브라우저 환경에서는 앱을 종료할 수 없습니다.')
+      }
+    } catch (error) {
+      console.error('앱 종료 중 오류:', error)
     }
   }
 
@@ -686,22 +690,6 @@ const QRCodeScreen = () => {
       </div>
     </div>
   )
-}
-
-// window 타입에 fileApi 추가
-declare global {
-  interface Window {
-    fileApi?: {
-      saveImageFromUrl: (url: string, filename: string) => Promise<{
-        success: boolean;
-        filePath?: string;
-        error?: string;
-      }>;
-    };
-    electronAPI?: {
-      closeApp: () => void;
-    };
-  }
 }
 
 export default QRCodeScreen
