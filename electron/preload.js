@@ -2,12 +2,12 @@ const { contextBridge } = require('electron');
 const path = require('path');
 const koffi = require('koffi');
 const fs = require('fs');
-const isDev = process.argv.includes('--dev'); // ✅ 직접 플래그 확인
+const isDev = process.argv.includes('--dev');
 
 // DLL 경로 설정
 const dllPath = isDev
-  ? path.join(__dirname, 'resources', 'SmartComm2.dll') // dev에서는 여기
-  : path.join(process.resourcesPath, 'resources', 'SmartComm2.dll'); // prod에서는 여기
+  ? path.join(__dirname, 'resources', 'SmartComm2.dll')
+  : path.join(process.resourcesPath, 'resources', 'SmartComm2.dll');
 console.log('📂 DLL 경로:', dllPath);
 console.log('📦 Koffi 버전:', koffi.version);
 console.log('🧠 Electron arch:', process.arch);
@@ -49,7 +49,7 @@ const DRAWTEXT2INFO = koffi.struct('DRAWTEXT2INFO', {
   style: 'int',
   color: 'uint32_t',
   option: 'int',
-  szFaceName: koffi.array('wchar_t', 32) // wchar_t 배열로 복원
+  szFaceName: koffi.array('wchar_t', 32)
 });
 
 // DLL 함수 정의
@@ -59,7 +59,7 @@ const SmartComm_DrawImage = smart.stdcall('SmartComm_DrawImage', 'int', ['void *
 const SmartComm_DrawText2 = smart.stdcall('SmartComm_DrawText', 'int', ['void *', 'uint8', 'uint8', 'int', 'int', 'void *', 'int', 'uint8', 'void *', 'void *']);
 const SmartComm_Print = smart.stdcall('SmartComm_Print', 'int', ['void *']);
 const SmartComm_CloseDevice = smart.stdcall('SmartComm_CloseDevice', 'int', ['void *']);
-const rectPtr = koffi.pointer('RECT', koffi.opaque()); // 반환값 무시할 거면 null 가능
+const rectPtr = koffi.pointer('RECT', koffi.opaque());
 
 let currentHandle = null;
 
@@ -68,7 +68,7 @@ const decodeWString = (uint16Array) => {
   return Buffer.from(uint16Array.buffer).toString('utf16le').replace(/\0/g, '');
 };
 
-// Electron 프린터 API 노출
+// 프린터 API 노출
 contextBridge.exposeInMainWorld('printerApi', {
   getDeviceList: async () => {
     try {
@@ -91,7 +91,6 @@ contextBridge.exposeInMainWorld('printerApi', {
         const dev = decodeWString(device.dev);
         const desc = decodeWString(device.desc);
 
-        // ✅ 프린터 리스트 출력 (디버그용)
         console.log(`📋 프린터[${idx}]`);
         console.log(`   name: ${JSON.stringify(name)}`);
         console.log(`   id  : ${JSON.stringify(id)}`);
@@ -117,13 +116,11 @@ contextBridge.exposeInMainWorld('printerApi', {
   openDevice: async (id) => {
     try {
       console.log('🔌 장치 열기 시도:', id);
-      console.log('🔤 넘긴 id 내용:', JSON.stringify(id));
-      console.log('🔤 길이:', id.length);
 
       const handlePtr = Buffer.alloc(koffi.sizeof('void *'));
-      const idBuf = Buffer.from(id + '\0', 'utf16le'); // ✅ null-terminated UTF-16LE
+      const idBuf = Buffer.from(id + '\0', 'utf16le');
 
-      const result = SmartComm_OpenDevice2(handlePtr, idBuf, 0); // 1 = ID 기준으로 열기
+      const result = SmartComm_OpenDevice2(handlePtr, idBuf, 0);
       console.log('📟 openDevice2 결과:', result);
 
       if (result !== 0) {
@@ -135,8 +132,7 @@ contextBridge.exposeInMainWorld('printerApi', {
     } catch (err) {
       return { success: false, error: err.message };
     }
-  }
-  ,
+  },
 
   drawImage: async ({ page, panel, x, y, width, height, imagePath }) => {
     try {
@@ -153,7 +149,7 @@ contextBridge.exposeInMainWorld('printerApi', {
         width,
         height,
         imgPathBuf,
-        null // prcArea 안 쓸 거면 null
+        null
       );
 
       if (result !== 0) {
@@ -169,7 +165,7 @@ contextBridge.exposeInMainWorld('printerApi', {
   drawText: async ({ page, panel, x, y, fontName, fontSize, fontStyle, text }) => {
     try {
       if (!currentHandle) return { success: false, error: '프린터가 연결되지 않았습니다.' };
-  
+
       console.log('📝 텍스트 그리기 시작:', text);
       console.log('📝 폰트 이름:', fontName);
       
@@ -236,6 +232,19 @@ contextBridge.exposeInMainWorld('printerApi', {
   }
 });
 
+// 🔥 KS_NET 결제 API 노출 추가
+contextBridge.exposeInMainWorld('electronAPI', {
+  sendPaymentRequest: async (requestData) => {
+    const { ipcRenderer } = require('electron');
+    return await ipcRenderer.invoke("send-payment-request", requestData);
+  },
+  closeApp: () => {
+    console.log('🔴 앱 종료 요청');
+    const { ipcRenderer } = require('electron');
+    ipcRenderer.send('app:quit');
+  }
+});
+
 contextBridge.exposeInMainWorld('envApi', {
   cwd: () => process.cwd()
 });
@@ -245,18 +254,16 @@ const os = require('os');
 contextBridge.exposeInMainWorld('env', {
   cwd: () => process.cwd(),
   downloadPath: () => path.join(os.homedir(), 'Downloads'),
-  resourcesPath: () => process.resourcesPath, // 추가
-  isDev: () => isDev // 추가
+  resourcesPath: () => process.resourcesPath,
+  isDev: () => isDev
 });
 
-// 파일 저장 API 추가
+// 파일 저장 API
 contextBridge.exposeInMainWorld('fileApi', {
-  // 이미지 URL을 다운로드 폴더에 저장하는 함수
   saveImageFromUrl: async (url, filename = 'photo.png') => {
     try {
       console.log('🔽 이미지 저장 시작:', url, '→', filename);
       
-      // 이미지 가져오기
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`이미지 다운로드 실패: ${response.status}`);
@@ -265,11 +272,9 @@ contextBridge.exposeInMainWorld('fileApi', {
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
-      // 다운로드 폴더 경로
       const downloadPath = path.join(os.homedir(), 'Downloads');
       const filePath = path.join(downloadPath, filename);
       
-      // 파일 쓰기
       fs.writeFileSync(filePath, buffer);
       console.log('✅ 이미지 저장 완료:', filePath);
       
@@ -278,14 +283,5 @@ contextBridge.exposeInMainWorld('fileApi', {
       console.error('❌ 이미지 저장 오류:', error);
       return { success: false, error: error.message };
     }
-  }
-});
-
-// Electron 앱 종료 API 추가
-contextBridge.exposeInMainWorld('electronAPI', {
-  closeApp: () => {
-    console.log('🔴 앱 종료 요청');
-    const { ipcRenderer } = require('electron');
-    ipcRenderer.send('app:quit');
   }
 });

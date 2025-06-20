@@ -42,19 +42,20 @@ const FrameSelectionScreen = () => {
         console.log('🖼️ 프레임 선택됨:', frameId)
     }
 
-    const handlePrint = async () => {
+    // 🔥 결제 화면으로 이동하도록 수정
+    const handleNext = async () => {
         if (!selectedFrame || isNavigating) return
         setIsNavigating(true)
 
-        console.log('🖨️ 인쇄 준비:', {
+        console.log('💳 결제 화면으로 이동:', {
             hasImage: !!uploadedImage,
             imageType,
             selectedFrame
         })
 
-        // 선택된 프레임과 이미지 정보를 navigate state로 전달
+        // 결제 화면으로 이동
         setTimeout(() => {
-            navigate('/printing', {
+            navigate('/payment', {
                 state: {
                     uploadedImage: uploadedImage,
                     imageType: imageType,
@@ -258,7 +259,8 @@ const FrameSelectionScreen = () => {
         border: '3px solid #d1d5db',
     }
 
-    const printButtonStyle: CSSProperties = {
+    // 🔥 버튼 텍스트를 "결제하기"로 변경
+    const nextButtonStyle: CSSProperties = {
         ...buttonStyle,
         backgroundColor: selectedFrame ? '#ef4444' : '#cccccc',
         color: 'white',
@@ -364,11 +366,11 @@ const FrameSelectionScreen = () => {
                         이전으로
                     </button>
                     <button
-                        onClick={handlePrint}
-                        style={printButtonStyle}
+                        onClick={handleNext}
+                        style={nextButtonStyle}
                         disabled={!selectedFrame}
                     >
-                        인쇄하기
+                        결제하기 {/* 🔥 텍스트 변경 */}
                     </button>
                 </div>
             </div>
