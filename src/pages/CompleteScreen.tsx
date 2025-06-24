@@ -1,10 +1,22 @@
-import { useEffect, CSSProperties } from 'react'
+import { useEffect, useState, CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const CompleteScreen = () => {
   const navigate = useNavigate()
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false)
 
   useEffect(() => {
+    // 프리로딩된 이미지가 있으면 즉시 표시
+    if (window.imagesPreloaded) {
+      setBackgroundLoaded(true)
+    } else {
+      // 프리로딩이 안된 경우 직접 로드
+      const img = new Image()
+      img.onload = () => setBackgroundLoaded(true)
+      img.onerror = () => setBackgroundLoaded(true) // 실패해도 진행
+      img.src = './complete.png'
+    }
+
     const timer = setTimeout(() => {
       navigate('/')
     }, 3000) // 3초 후 메인으로
@@ -12,102 +24,36 @@ const CompleteScreen = () => {
     return () => clearTimeout(timer)
   }, [navigate])
 
-  // 상단 로고 컨테이너
-  const topLogoContainerStyle: CSSProperties = {
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: '48px',
-    paddingBottom: '24px',
-    minHeight: '220px',
-  }
-
-  // 중앙 메시지 영역
-  const contentStyle: CSSProperties = {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-    marginBottom: '350px',
-    position: 'relative',
-    zIndex: 1,
-  }
-
-  // 메인 텍스트 스타일
-  const mainTextStyle: CSSProperties = {
-    fontSize: '40px',
-    fontWeight: 'bold',
-    color: '#e75480', // 카네이션 핑크색
-    marginBottom: '30px',
-    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
-  }
-
-
-  // 인쇄 아이콘 컨테이너
-  const iconContainerStyle: CSSProperties = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: '20px',
-    position: 'relative',
-  }
-
-  // 인쇄 아이콘 스타일
-  const completeIconStyle: CSSProperties = {
-    fontSize: '100px',
-    filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))',
-  }
-
-  // 카네이션 아이콘 스타일
-  const carnationStyle: CSSProperties = {
-    fontSize: '44px',
-    position: 'absolute',
-    zIndex: 2,
-  }
-
-  // 하단 로고 절대 위치 고정
-  const bottomLogoContainerStyle: CSSProperties = {
-    position: 'absolute',
-    bottom: '30px',
-    left: 0,
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: '20px',
-    zIndex: 1,
-  }
-
-  // 전체 컨테이너
+  // 스타일 정의
   const containerStyle: CSSProperties = {
     width: '100%',
     height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     position: 'relative',
-    backgroundColor: '#ffffff', // 순수한 흰색 배경
     overflow: 'hidden',
   }
 
-  // 세로 장식 테두리 스타일 (좌우)
-  const verticalDecorStyle: CSSProperties = {
+  const backgroundStyle: CSSProperties = {
     position: 'absolute',
-    height: '80%',
-    width: '10px',
-    top: '10%',
-    background: 'linear-gradient(to bottom, rgba(231, 84, 128, 0.1), rgba(76, 175, 80, 0.1))',
-    borderRadius: '5px',
-    zIndex: 0,
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundImage: 'url(./complete.png)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    opacity: backgroundLoaded ? 1 : 0,
+    transition: 'opacity 0.3s ease-in-out',
   }
 
+
+
+
+
+
   return (
-    <div style={containerStyle} className="relative">
-      {/* 애니메이션용 CSS */}
+    <div style={containerStyle}>
+      {/* 애니메이션 CSS */}
       <style>
         {`
           @keyframes pop-in {
@@ -122,89 +68,43 @@ const CompleteScreen = () => {
             100% { opacity: 1; transform: scale(1); }
           }
           
-          @keyframes gentle-float {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-8px) rotate(3deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-          }
-          
-          .complete-icon {
-            animation: pop-in 0.6s forwards;
-          }
-          
-          .message-text {
-            animation: pop-in 0.6s 0.2s backwards, pulse 2.5s 1s infinite;
-          }
-          
-          .carnation {
-            animation: gentle-float 3s infinite;
-          }
-          
-          .decor-left {
-            left: 30px;
-            animation: pulse 4s infinite;
-          }
-          
-          .decor-right {
-            right: 30px;
-            animation: pulse 4s infinite 1s;
+          @keyframes fade-in {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
           }
         `}
       </style>
 
-      {/* 좌우 세로 장식 */}
-      <div style={verticalDecorStyle} className="decor-left"></div>
-      <div style={verticalDecorStyle} className="decor-right"></div>
+      {/* 배경 이미지 */}
+      <div style={backgroundStyle} />
 
-      {/* 상단 로고 */}
-      <div style={topLogoContainerStyle}>
-        <img
-          src="./festival_logo.png"
-          alt="Festival Logo"
-          className="max-h-[220px]"
+      {/* 로딩 인디케이터 */}
+      {!backgroundLoaded && (
+        <div
           style={{
-            display: 'block',
-            margin: '0 auto',
-            maxWidth: '80%',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#059669',
+            fontSize: '32px',
+            fontWeight: '600',
+            zIndex: 1000,
           }}
-        />
-      </div>
-
-      {/* 중앙 텍스트 및 애니메이션 */}
-      <div style={contentStyle}>
-        {/* 완료 아이콘과 장식 */}
-        <div style={iconContainerStyle}>
-          <div style={completeIconStyle} className="complete-icon">
-            {/* ✅ 대신 더 예쁜 이모지 조합 사용 */}
-            <span role="img" aria-label="complete">💖</span>
-          </div>
-          <div style={{ ...carnationStyle, top: '-20px', left: '135px' }} className="carnation">
-            <span role="img" aria-label="carnation">🌸</span>
-          </div>
-          <div style={{ ...carnationStyle, bottom: '-15px', right: '135px' }} className="carnation" >
-            <span role="img" aria-label="carnation">🌸</span>
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>✨</div>
+            화면 준비 중...
           </div>
         </div>
+      )}
 
-        {/* 완료 텍스트 */}
-        <div style={mainTextStyle} className="message-text">
-        포토카드가 출력되었습니다. 감사합니다 💚
-        </div>
-      </div>
-
-      {/* 하단 로고 */}
-      <div style={bottomLogoContainerStyle}>
-        <img
-          src="./logo.png"
-          alt="Bottom Logo"
-          className="w-1/3 max-w-[300px] object-contain"
-          style={{
-            display: 'block',
-            margin: '0 auto',
-            maxWidth: '40%',
-          }}
-        />
-      </div>
+      {/* 메인 컨텐츠는 배경만 표시 */}
     </div>
   )
 }

@@ -72,7 +72,7 @@ const FrameSelectionScreen = () => {
         navigate('/upload')
     }
 
-    // 미리보기 이미지 렌더링 함수
+    // 미리보기 이미지 렌더링 함수 (리사이징 적용)
     const renderPreviewImage = () => {
         if (!uploadedImage) return null
 
@@ -83,7 +83,7 @@ const FrameSelectionScreen = () => {
                 style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'contain', // cover → contain으로 변경 (이미지 전체가 보이도록)
+                    objectFit: 'cover', // contain → cover로 변경 (설정된 크기에 맞춰서 늘어남)
                     borderRadius: '4px',
                 }}
                 onError={(e) => {
@@ -112,8 +112,8 @@ const FrameSelectionScreen = () => {
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'contain', // cover → contain으로 변경 (이미지 전체 표시)
-                        backgroundColor: '#f9fafb', // 빈 공간이 생길 경우 배경색
+                        objectFit: 'contain', // 프레임은 전체가 보이도록 유지
+                        backgroundColor: '#f9fafb',
                     }}
                     onError={(e) => {
                         console.error('프레임 이미지 로드 실패:', frame.preview);
@@ -131,10 +131,10 @@ const FrameSelectionScreen = () => {
                 <div style={{
                     position: 'absolute',
                     top: '50%',           
-                    left: '20%',          
+                    left: '20%',
                     transform: 'translate(-50%, -50%)',
-                    width: '25%',         // 70% → 75%로 증가 (더 큰 이미지 영역)
-                    height: '25%',        // 55% → 60%로 증가 (더 큰 이미지 영역)
+                    width: '35%',        
+                    height: '48%',      
                     backgroundColor: 'rgba(255, 255, 255, 0.9)',
                     border: '2px solid rgba(0, 0, 0, 0.1)',
                     borderRadius: '4px',
@@ -148,7 +148,7 @@ const FrameSelectionScreen = () => {
                     ) : (
                         <div style={{
                             color: '#9ca3af',
-                            fontSize: '14px', // 12px → 14px로 증가
+                            fontSize: '14px',
                             textAlign: 'center',
                             padding: '4px',
                         }}>
@@ -188,7 +188,7 @@ const FrameSelectionScreen = () => {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
-        backgroundColor: '#fefbf7', // 따뜻한 베이지 배경
+        backgroundColor: '#fefbf7',
     }
 
     const backgroundStyle: CSSProperties = {
@@ -197,9 +197,9 @@ const FrameSelectionScreen = () => {
         left: 0,
         width: '100%',
         height: '100%',
-        background: 'linear-gradient(135deg, #fefbf7 0%)', // 빈티지 그라데이션
+        background: 'linear-gradient(135deg, #fefbf7 0%, #fef3e2 50%, #fef7ed 100%)',
         opacity: backgroundLoaded ? 1 : 0,
-        transition: 'opacity 1s ease-in-out',
+        transition: 'opacity 0.3s ease-in-out',
     }
 
     const contentWrapperStyle: CSSProperties = {
@@ -217,19 +217,11 @@ const FrameSelectionScreen = () => {
     const titleStyle: CSSProperties = {
         fontSize: '36px',
         fontWeight: 'bold',
-        color: '#92400e', // 빈티지 브라운
+        color: '#92400e',
         textAlign: 'center',
         marginBottom: '20px',
         textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
-        fontFamily: '"Times New Roman", serif', // 클래식 폰트
-    }
-
-    const subtitleStyle: CSSProperties = {
-        fontSize: '20px',
-        color: '#a16207',
-        textAlign: 'center',
-        marginBottom: '40px',
-        fontStyle: 'italic',
+        fontFamily: '"Times New Roman", serif',
     }
 
     const imageTypeIndicatorStyle: CSSProperties = {
@@ -246,9 +238,9 @@ const FrameSelectionScreen = () => {
 
     const frameGridStyle: CSSProperties = {
         display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)', // 3줄 → 2줄로 변경
-        gap: '30px', // 간격 증가
-        maxWidth: '700px', // 900px → 700px로 축소 (2열에 맞게)
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '30px',
+        maxWidth: '700px',
         width: '100%',
         marginBottom: '40px',
         justifyContent: 'center',
@@ -256,8 +248,8 @@ const FrameSelectionScreen = () => {
     }
 
     const frameItemStyle: CSSProperties = {
-        width: '320px', // 280px → 320px로 증가
-        height: '200px', // 350px → 400px로 증가
+        width: '320px',
+        height: '200px',
         borderRadius: '16px',
         cursor: 'pointer',
         transition: 'all 0.3s ease',
@@ -277,10 +269,9 @@ const FrameSelectionScreen = () => {
 
     const frameContentStyle: CSSProperties = {
         width: '100%',
-        height: '100%', // 350px → 100%로 변경 (전체 카드 영역 사용)
+        height: '100%',
         position: 'relative',
     }
-
 
     const buttonContainerStyle: CSSProperties = {
         display: 'flex',
@@ -356,7 +347,6 @@ const FrameSelectionScreen = () => {
                             <div style={frameContentStyle}>
                                 {renderFramePreview(frame)}
                             </div>
-                            {/* 프레임 이름 영역 제거 */}
                         </div>
                     ))}
                 </div>
@@ -407,7 +397,7 @@ const FrameSelectionScreen = () => {
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    backgroundColor: '#fef7ed',
+                    backgroundColor: '#fefbf7',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

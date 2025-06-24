@@ -2,14 +2,51 @@ import { useEffect, useRef, useState, CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 
-// 캐릭터 이미지 데이터 (public/characters/ 폴더에 이미지 저장)
-const CHARACTER_IMAGES = [
-  { id: 'char1', name: '귀여운 곰', image: './characters/bear.png' },
-  { id: 'char2', name: '사랑스러운 고양이', image: './characters/cat.png' },
-  { id: 'char3', name: '친근한 강아지', image: './characters/dog.png' },
-  { id: 'char4', name: '고양이', image: './characters/cat.png' },
-  { id: 'char5', name: '꽃', image: './characters/flower.png' },
-  { id: 'char6', name: '하트', image: './characters/heart.png' },
+// 이미지 프리로딩 함수
+const preloadImage = (src: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`))
+    img.src = src
+  })
+}
+
+// 모든 이미지를 미리 로드하는 함수
+const preloadAllImages = async () => {
+  const images = [
+    './payment.png',
+    './qrscreen.png',
+    './frames/frame1.jpg',
+    './frames/frame2.jpg',
+    './frames/frame3.jpg',
+    './frames/frame4.jpg',
+    './frames/frame5.jpg',
+    './frames/frame6.jpg',
+    './completed_frames/frame1_complete.jpg',
+    './completed_frames/frame2_complete.jpg',
+    './completed_frames/frame3_complete.jpg',
+    './completed_frames/frame4_complete.jpg',
+    './completed_frames/frame5_complete.jpg',
+    './completed_frames/frame6_complete.jpg',
+  ]
+
+  try {
+    await Promise.all(images.map(src => preloadImage(src)))
+    console.log('✅ 모든 이미지 프리로딩 완료')
+  } catch (error) {
+    console.warn('⚠️ 일부 이미지 프리로딩 실패:', error)
+  }
+}
+
+// 완성된 프레임 이미지 데이터 (public/completed_frames/ 폴더에 이미지 저장)
+const COMPLETED_FRAMES = [
+  { id: 'completed1', name: '클래식 화이트 완성본', image: './completed_frames/frame1_complete.jpg' },
+  { id: 'completed2', name: '로즈 골드 완성본', image: './completed_frames/frame2_complete.jpg' },
+  { id: 'completed3', name: '빈티지 브라운 완성본', image: './completed_frames/frame3_complete.jpg' },
+  { id: 'completed4', name: '모던 블랙 완성본', image: './completed_frames/frame4_complete.jpg' },
+  { id: 'completed5', name: '파스텔 핑크 완성본', image: './completed_frames/frame5_complete.jpg' },
+  { id: 'completed6', name: '엘레간트 블루 완성본', image: './completed_frames/frame6_complete.jpg' },
 ]
 
 const QRCodeScreen = () => {
@@ -19,11 +56,23 @@ const QRCodeScreen = () => {
   const [eventId, setEventId] = useState<string | null>(null)
   const [qrUrl, setQrUrl] = useState<string | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
-  const [showCharacterModal, setShowCharacterModal] = useState(false)
+  const [selectedFrame, setSelectedFrame] = useState<string | null>(null)
+  const [showFrameModal, setShowFrameModal] = useState(false)
   const [backgroundLoaded, setBackgroundLoaded] = useState(false)
 
   useEffect(() => {
+    // 이미지 프리로딩 (전역에서 한 번만 실행)
+    const initializeImages = async () => {
+      if (!window.imagesPreloaded) {
+        console.log('🖼️ 이미지 프리로딩 시작...')
+        await preloadAllImages()
+        window.imagesPreloaded = true
+      }
+      setBackgroundLoaded(true) // 프리로딩 완료되면 즉시 표시
+    }
+
+    initializeImages()
+
     const createSession = async () => {
       try {
         const res = await fetch(
@@ -55,11 +104,11 @@ const QRCodeScreen = () => {
             try {
               const enhancedImageUrl = await enhanceImageQuality(imageUrl)
               setUploadedImage(enhancedImageUrl)
-              setSelectedCharacter(null)
+              setSelectedFrame(null)
             } catch (err) {
               console.error('이미지 화질 개선 실패:', err)
               setUploadedImage(imageUrl)
-              setSelectedCharacter(null)
+              setSelectedFrame(null)
             }
           }
         }
@@ -158,20 +207,20 @@ const QRCodeScreen = () => {
     }
   }
 
-  // 캐릭터 선택 핸들러
-  const handleCharacterSelect = (characterId: string) => {
-    const character = CHARACTER_IMAGES.find(char => char.id === characterId)
-    if (character) {
-      setSelectedCharacter(character.image)
+  // 프레임 선택 핸들러
+  const handleFrameSelect = (frameId: string) => {
+    const frame = COMPLETED_FRAMES.find(f => f.id === frameId)
+    if (frame) {
+      setSelectedFrame(frame.image)
       setUploadedImage(null)
-      setShowCharacterModal(false)
-      console.log('🎭 캐릭터 선택됨:', character.name)
+      setShowFrameModal(false)
+      console.log('🖼️ 완성된 프레임 선택됨:', frame.name)
     }
   }
 
   // 다음으로 버튼 핸들러
   const handleNext = async () => {
-    const imageToUse = uploadedImage || selectedCharacter
+    const imageToUse = uploadedImage || selectedFrame
 
     if (imageToUse) {
       await saveImageToLocal(imageToUse)
@@ -196,12 +245,25 @@ const QRCodeScreen = () => {
     }
 
     setTimeout(() => {
-      navigate('/frame', {
-        state: {
-          uploadedImage: imageToUse,
-          imageType: uploadedImage ? 'photo' : 'character'
-        }
-      })
+      // QR 업로드된 사진이 있으면 프레임 선택 화면으로
+      if (uploadedImage) {
+        navigate('/frame', {
+          state: {
+            uploadedImage: imageToUse,
+            imageType: 'photo'
+          }
+        })
+      }
+      // 완성된 프레임을 선택했으면 바로 결제 화면으로
+      else if (selectedFrame) {
+        navigate('/payment', {
+          state: {
+            uploadedImage: imageToUse,   // ✅ 선택된 완성 이미지 URL
+            imageType: 'frame',
+            selectedFrame: null          // ✅ 반드시 null
+          }
+        });
+      }
     }, 100)
   }
 
@@ -235,12 +297,12 @@ const QRCodeScreen = () => {
     }
   }
 
-  // 캐릭터 이미지 렌더링 함수
-  const renderCharacterImage = (character: typeof CHARACTER_IMAGES[0]) => {
+  // 프레임 이미지 렌더링 함수
+  const renderFrameImage = (frame: typeof COMPLETED_FRAMES[0]) => {
     return (
       <img
-        src={character.image}
-        alt={character.name}
+        src={frame.image}
+        alt={frame.name}
         style={{
           width: '150px',
           height: '120px',
@@ -249,7 +311,7 @@ const QRCodeScreen = () => {
           marginBottom: '10px',
         }}
         onError={(e) => {
-          console.error('캐릭터 이미지 로드 실패:', character.image);
+          console.error('프레임 이미지 로드 실패:', frame.image);
           const target = e.target as HTMLImageElement;
           target.style.display = 'none';
           const parent = target.parentElement;
@@ -265,7 +327,7 @@ const QRCodeScreen = () => {
             placeholder.style.color = '#6b7280';
             placeholder.style.fontSize = '14px';
             placeholder.style.marginBottom = '10px';
-            placeholder.textContent = character.name;
+            placeholder.textContent = frame.name;
             parent.insertBefore(placeholder, target);
           }
         }}
@@ -292,7 +354,7 @@ const QRCodeScreen = () => {
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     opacity: backgroundLoaded ? 1 : 0,
-    transition: 'opacity 1s ease-in-out',
+    transition: backgroundLoaded ? 'opacity 0.3s ease-in-out' : 'none',
   }
 
   const closeButtonStyle: CSSProperties = {
@@ -311,7 +373,7 @@ const QRCodeScreen = () => {
     zIndex: 100,
   }
 
-  const characterButtonStyle: CSSProperties = {
+  const frameButtonStyle: CSSProperties = {
     padding: '16px 32px',
     borderRadius: '12px',
     fontSize: '20px',
@@ -331,8 +393,8 @@ const QRCodeScreen = () => {
   }
 
   const selectedImageDisplayStyle: CSSProperties = {
-    width: '400px',
-    height: '300px',
+    width: '600px',  // 400px → 600px
+    height: '600px', // 300px → 600px (QR 코드와 동일한 크기)
     border: '3px solid #8b5cf6',
     borderRadius: '12px',
     display: 'flex',
@@ -340,9 +402,9 @@ const QRCodeScreen = () => {
     justifyContent: 'center',
     backgroundColor: '#f3e8ff',
     position: 'absolute',
-    top: '250px',
+    top: '50%',      // 250px → 50% (QR 코드와 동일한 위치)
     left: '50%',
-    transform: 'translateX(-50%)',
+    transform: 'translate(-50%, -50%)', // translateX(-50%) → translate(-50%, -50%)
     zIndex: 10,
   }
 
@@ -383,10 +445,10 @@ const QRCodeScreen = () => {
 
   const nextButtonStyle: CSSProperties = {
     ...buttonStyle,
-    backgroundColor: (uploadedImage || selectedCharacter) ? '#ef4444' : '#cccccc',
+    backgroundColor: (uploadedImage || selectedFrame) ? '#ef4444' : '#cccccc',
     color: 'white',
-    border: (uploadedImage || selectedCharacter) ? '3px solid #ef4444' : '3px solid #cccccc',
-    cursor: (uploadedImage || selectedCharacter) ? 'pointer' : 'not-allowed',
+    border: (uploadedImage || selectedFrame) ? '3px solid #ef4444' : '3px solid #cccccc',
+    cursor: (uploadedImage || selectedFrame) ? 'pointer' : 'not-allowed',
   }
 
   // 모달 스타일
@@ -414,14 +476,14 @@ const QRCodeScreen = () => {
     boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
   }
 
-  const characterGridStyle: CSSProperties = {
+  const frameGridStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '20px',
     marginTop: '20px',
   }
 
-  const characterItemStyle: CSSProperties = {
+  const frameItemStyle: CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -438,21 +500,7 @@ const QRCodeScreen = () => {
       {/* 배경 이미지 */}
       <div style={backgroundStyle} />
 
-      {/* 백업 이미지 로드 체크 */}
-      <img
-        src="./qrscreen.png"
-        alt="QR Screen Background"
-        style={{
-          position: 'absolute',
-          opacity: 0,
-          pointerEvents: 'none',
-        }}
-        onLoad={() => setBackgroundLoaded(true)}
-        onError={() => {
-          console.log('qrscreen.png를 찾을 수 없습니다.');
-          setBackgroundLoaded(true); // 에러여도 진행
-        }}
-      />
+      {/* 백업 이미지 로드 체크 제거 - 프리로딩으로 대체 */}
 
       {/* 로딩 인디케이터 */}
       {!backgroundLoaded && (
@@ -489,10 +537,10 @@ const QRCodeScreen = () => {
         }}>종료</span>
       </button>
 
-      {/* 캐릭터 선택 버튼 */}
+      {/* 이미지 선택 버튼 */}
       <button
-        onClick={() => setShowCharacterModal(true)}
-        style={characterButtonStyle}
+        onClick={() => setShowFrameModal(true)}
+        style={frameButtonStyle}
         onMouseOver={(e) => {
           const target = e.target as HTMLButtonElement
           target.style.backgroundColor = '#e9d5ff'
@@ -504,15 +552,15 @@ const QRCodeScreen = () => {
           target.style.transform = 'translateX(-50%) scale(1)'
         }}
       >
-        🎭 귀여운 캐릭터 선택하기
+        🖼️ 이미지 선택하기
       </button>
 
-      {/* 선택된 캐릭터 표시 */}
-      {selectedCharacter && (
+      {/* 선택된 프레임 표시 */}
+      {selectedFrame && (
         <div style={selectedImageDisplayStyle}>
           <img
-            src={selectedCharacter}
-            alt="Selected Character"
+            src={selectedFrame}
+            alt="Selected Frame"
             style={{
               width: '100%',
               height: '100%',
@@ -520,7 +568,7 @@ const QRCodeScreen = () => {
               borderRadius: '8px',
             }}
             onError={(e) => {
-              console.error('선택된 캐릭터 이미지 로드 실패:', selectedCharacter);
+              console.error('선택된 프레임 이미지 로드 실패:', selectedFrame);
               const target = e.target as HTMLImageElement;
               target.style.display = 'none';
               const parent = target.parentElement;
@@ -534,7 +582,7 @@ const QRCodeScreen = () => {
       )}
 
       {/* QR 코드 or 업로드된 이미지 */}
-      {!selectedCharacter && (
+      {!selectedFrame && (
         <div style={qrContainerStyle}>
           {uploadedImage ? (
             <img
@@ -572,15 +620,15 @@ const QRCodeScreen = () => {
         <button
           onClick={handleNext}
           style={nextButtonStyle}
-          disabled={!uploadedImage && !selectedCharacter}
+          disabled={!uploadedImage && !selectedFrame}
         >
           다음으로
         </button>
       </div>
 
-      {/* 캐릭터 선택 모달 */}
-      {showCharacterModal && (
-        <div style={modalOverlayStyle} onClick={() => setShowCharacterModal(false)}>
+      {/* 프레임 선택 모달 */}
+      {showFrameModal && (
+        <div style={modalOverlayStyle} onClick={() => setShowFrameModal(false)}>
           <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
             <h2 style={{
               fontSize: '32px',
@@ -589,15 +637,15 @@ const QRCodeScreen = () => {
               marginBottom: '20px',
               color: '#1f2937'
             }}>
-              귀여운 캐릭터를 선택하세요 🎭
+              완성된 이미지를 선택하세요 🖼️
             </h2>
-            
-            <div style={characterGridStyle}>
-              {CHARACTER_IMAGES.map((character) => (
+
+            <div style={frameGridStyle}>
+              {COMPLETED_FRAMES.map((frame) => (
                 <div
-                  key={character.id}
-                  style={characterItemStyle}
-                  onClick={() => handleCharacterSelect(character.id)}
+                  key={frame.id}
+                  style={frameItemStyle}
+                  onClick={() => handleFrameSelect(frame.id)}
                   onMouseOver={(e) => {
                     const target = e.target as HTMLDivElement
                     target.style.borderColor = '#8b5cf6'
@@ -611,14 +659,14 @@ const QRCodeScreen = () => {
                     target.style.transform = 'scale(1)'
                   }}
                 >
-                  {renderCharacterImage(character)}
+                  {renderFrameImage(frame)}
                   <span style={{
                     fontSize: '16px',
                     fontWeight: '600',
                     color: '#374151',
                     textAlign: 'center'
                   }}>
-                    {character.name}
+                    {frame.name}
                   </span>
                 </div>
               ))}
@@ -630,7 +678,7 @@ const QRCodeScreen = () => {
               marginTop: '30px'
             }}>
               <button
-                onClick={() => setShowCharacterModal(false)}
+                onClick={() => setShowFrameModal(false)}
                 style={{
                   padding: '12px 30px',
                   backgroundColor: '#6b7280',
@@ -652,7 +700,7 @@ const QRCodeScreen = () => {
   )
 }
 
-// window 타입에 fileApi 추가
+// window 타입 확장
 declare global {
   interface Window {
     fileApi?: {
@@ -662,6 +710,7 @@ declare global {
         error?: string;
       }>;
     };
+    imagesPreloaded?: boolean;
   }
 }
 

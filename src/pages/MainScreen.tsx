@@ -1,7 +1,45 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-// import { kioskValidationService } from '../services/kioskValidationService'
-// import { globalState } from '../services/globalState'
+
+// 이미지 프리로딩 함수
+const preloadImage = (src: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`))
+    img.src = src
+  })
+}
+
+// 모든 이미지를 미리 로드하는 함수
+const preloadAllImages = async () => {
+  const images = [
+    './splash.png',
+    './payment.png',
+    './qrscreen.png',
+    './frames/frame1.jpg',
+    './frames/frame2.jpg',
+    './frames/frame3.jpg',
+    './frames/frame4.jpg',
+    './frames/frame5.jpg',
+    './frames/frame6.jpg',
+    './completed_frames/frame1_complete.jpg',
+    './completed_frames/frame2_complete.jpg',
+    './completed_frames/frame3_complete.jpg',
+    './completed_frames/frame4_complete.jpg',
+    './completed_frames/frame5_complete.jpg',
+    './completed_frames/frame6_complete.jpg',
+  ]
+
+  try {
+    await Promise.all(images.map(src => preloadImage(src)))
+    console.log('✅ 모든 이미지 프리로딩 완료')
+    return true
+  } catch (error) {
+    console.warn('⚠️ 일부 이미지 프리로딩 실패:', error)
+    return true // 실패해도 진행
+  }
+}
 
 // 타입 선언 (사용하지 않지만 유지)
 declare global {
@@ -14,26 +52,47 @@ declare global {
         buttons: string[];
       }) => Promise<any>;
     };
+    imagesPreloaded?: boolean;
   }
 }
 
 const MainScreen = () => {
   const navigate = useNavigate()
   const [showContent, setShowContent] = useState(false)
-  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imagesReady, setImagesReady] = useState(false)
+  const [splashImageExists, setSplashImageExists] = useState(true)
 
   useEffect(() => {
-    // 1초 후 컨텐츠 표시
-    const contentTimer = setTimeout(() => {
-      setShowContent(true)
-    }, 1000)
+    // 이미지 프리로딩 및 초기화
+    const initializeApp = async () => {
+      try {
+        // 전역에서 한 번만 프리로딩 실행
+        if (!window.imagesPreloaded) {
+          console.log('🖼️ 앱 시작 - 모든 이미지 프리로딩 시작...')
+          await preloadAllImages()
+          window.imagesPreloaded = true
+        }
+        
+        // 이미지 준비 완료
+        setImagesReady(true)
+        
+        // 0.5초 후 컨텐츠 표시 (프리로딩 후 빠른 표시)
+        setTimeout(() => {
+          setShowContent(true)
+        }, 500)
+        
+      } catch (error) {
+        console.error('앱 초기화 중 오류:', error)
+        // 에러가 있어도 진행
+        setImagesReady(true)
+        setShowContent(true)
+      }
+    }
+
+    initializeApp()
 
     // 키오스크 검증 로직 주석 처리
     // validateKioskOnStart()
-
-    return () => {
-      clearTimeout(contentTimer)
-    }
   }, [])
 
   // 키오스크 검증 함수들 주석 처리
@@ -48,14 +107,9 @@ const MainScreen = () => {
   }
   */
 
-  const handleStartClick = () => {
-    console.log('🎯 스플래시 화면에서 업로드 화면으로 이동')
-    navigate('/upload')
-  }
-
-  // 이미지 로드 후 클릭으로 시작 가능
+  // 이미지 준비 후 클릭으로 시작 가능
   useEffect(() => {
-    if (imageLoaded && showContent) {
+    if (imagesReady && showContent) {
       const handleClickAnywhere = () => {
         navigate('/upload')
       }
@@ -68,7 +122,33 @@ const MainScreen = () => {
         window.removeEventListener('touchstart', handleClickAnywhere)
       }
     }
-  }, [navigate, imageLoaded, showContent])
+  }, [navigate, imagesReady, showContent])
+
+  // splash.png 존재 여부 확인
+  useEffect(() => {
+    const checkSplashImage = async () => {
+      try {
+        await preloadImage('./splash.png')
+        setSplashImageExists(true)
+      } catch {
+        console.log('splash.png를 찾을 수 없어 festival_logo.png를 사용합니다.')
+        setSplashImageExists(false)
+      }
+    }
+    
+    if (!window.imagesPreloaded) {
+      checkSplashImage()
+    }
+  }, [])
+
+  // 배경 이미지 결정
+  const getBackgroundImage = () => {
+    if (splashImageExists) {
+      return 'url(./splash.png)'
+    } else {
+      return 'url(./festival_logo.png)'
+    }
+  }
 
   return (
     <div
@@ -77,7 +157,7 @@ const MainScreen = () => {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
-        cursor: (imageLoaded && showContent) ? 'pointer' : 'default',
+        cursor: (imagesReady && showContent) ? 'pointer' : 'default',
       }}
     >
       {/* 전체 화면 배경 이미지 */}
@@ -88,67 +168,42 @@ const MainScreen = () => {
           left: 0,
           width: '100%',
           height: '100%',
-          backgroundImage: 'url(./splash.png)',
+          backgroundImage: imagesReady ? getBackgroundImage() : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
-          opacity: showContent ? 1 : 0,
-          transition: 'opacity 1s ease-in-out',
-        }}
-        onLoad={() => setImageLoaded(true)}
-      />
-
-      {/* 백업 이미지 (splash.png가 없을 경우) */}
-      <img
-        src="./splash.png"
-        alt="Splash Screen"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          opacity: 0,
-          pointerEvents: 'none',
-        }}
-        onLoad={() => setImageLoaded(true)}
-        onError={(e) => {
-          // splash.png가 없으면 festival_logo.png 사용
-          const target = e.target as HTMLImageElement;
-          target.src = './festival_logo.png';
-          console.log('splash.png를 찾을 수 없어 festival_logo.png를 사용합니다.');
-          
-          // festival_logo.png도 실패하면 기본 배경색 사용
-          target.onerror = () => {
-            const parent = target.parentElement;
-            if (parent) {
-              const fallbackDiv = document.createElement('div');
-              fallbackDiv.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 48px;
-                font-weight: bold;
-                text-shadow: 0 4px 8px rgba(0,0,0,0.3);
-              `;
-              fallbackDiv.textContent = '포토카드 키오스크';
-              parent.appendChild(fallbackDiv);
-              setImageLoaded(true);
-            }
-          };
+          opacity: (imagesReady && showContent) ? 1 : 0,
+          transition: 'opacity 0.5s ease-in-out',
         }}
       />
 
-      {/* 로딩 인디케이터 (이미지 로드 전까지 표시) */}
-      {!imageLoaded && (
+      {/* splash.png와 festival_logo.png 모두 실패할 경우 폴백 */}
+      {!splashImageExists && imagesReady && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '48px',
+            fontWeight: 'bold',
+            textShadow: '0 4px 8px rgba(0,0,0,0.3)',
+            opacity: showContent ? 1 : 0,
+            transition: 'opacity 0.5s ease-in-out',
+          }}
+        >
+          포토카드 키오스크
+        </div>
+      )}
+
+      {/* 로딩 인디케이터 (이미지 준비 전까지 표시) */}
+      {!imagesReady && (
         <div
           style={{
             position: 'absolute',
@@ -164,6 +219,7 @@ const MainScreen = () => {
             color: '#64748b',
             fontSize: '32px',
             fontWeight: '600',
+            zIndex: 1000,
           }}
         >
           <div style={{
@@ -172,22 +228,9 @@ const MainScreen = () => {
           }}>
             🖼️
           </div>
-          <div>이미지 로딩 중...</div>
+          <div>앱 준비 중...</div>
         </div>
       )}
-
-
-
-      {/* CSS 애니메이션 */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
-            100% { opacity: 1; transform: scale(1); }
-          }
-        `
-      }} />
     </div>
   )
 }
