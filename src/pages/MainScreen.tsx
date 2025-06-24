@@ -7,6 +7,7 @@ import { globalState } from '../services/globalState' // 추가
 declare global {
   interface Window {
     electron?: {
+      sendPaymentRequest(requestData: { REQ: string; }): unknown;
       showMessageBox: (options: {
         type: 'error' | 'warning' | 'info' | 'question';
         title: string;
