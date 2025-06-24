@@ -1,13 +1,11 @@
 // 로컬 프레임 템플릿 데이터 (public/frames/ 폴더 사용)
 const FRAME_TEMPLATES = [
-    { id: 'frame1', name: '클래식 화이트', preview: './frames/frame1.png' },
-    // { id: 'frame2', name: '로즈 골드', preview: './frames/frame2.png' },
-    // { id: 'frame3', name: '빈티지 브라운', preview: './frames/frame3.png' },
-    // { id: 'frame4', name: '모던 블랙', preview: './frames/frame4.png' },
-    // { id: 'frame5', name: '파스텔 핑크', preview: './frames/frame5.png' },
-    // { id: 'frame6', name: '네이처 그린', preview: './frames/frame6.png' },
-    // { id: 'frame7', name: '엘레간트 퍼플', preview: './frames/frame7.png' },
-    // { id: 'frame8', name: '심플 그레이', preview: './frames/frame8.png' },
+    { id: 'frame1', name: '클래식 화이트', preview: './frames/frame1.jpg' },
+    { id: 'frame2', name: '로즈 골드', preview: './frames/frame2.jpg' },
+    { id: 'frame3', name: '빈티지 브라운', preview: './frames/frame3.jpg' },
+    { id: 'frame4', name: '모던 블랙', preview: './frames/frame4.jpg' },
+    { id: 'frame5', name: '파스텔 핑크', preview: './frames/frame5.jpg' },
+    { id: 'frame6', name: '엘레간트 블루', preview: './frames/frame6.jpg' },
 ]
 
 import { useState, useEffect, CSSProperties } from 'react'
@@ -17,9 +15,10 @@ const FrameSelectionScreen = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const [uploadedImage, setUploadedImage] = useState<string | null>(null)
-    const [imageType, setImageType] = useState<'photo' | 'character'>('photo') // 이미지 타입 구분
+    const [imageType, setImageType] = useState<'photo' | 'character'>('photo')
     const [selectedFrame, setSelectedFrame] = useState<string | null>(null)
     const [isNavigating, setIsNavigating] = useState(false)
+    const [backgroundLoaded, setBackgroundLoaded] = useState(false)
 
     useEffect(() => {
         // navigate state에서 이미지와 타입 가져오기
@@ -35,6 +34,9 @@ const FrameSelectionScreen = () => {
             console.log('❌ 업로드된 이미지를 찾을 수 없습니다.')
             navigate('/upload')
         }
+
+        // 배경 즉시 로딩 완료로 설정
+        setBackgroundLoaded(true)
     }, [navigate, location.state])
 
     const handleFrameSelect = (frameId: string) => {
@@ -42,7 +44,7 @@ const FrameSelectionScreen = () => {
         console.log('🖼️ 프레임 선택됨:', frameId)
     }
 
-    // 🔥 결제 화면으로 이동하도록 수정
+    // 결제 화면으로 이동
     const handleNext = async () => {
         if (!selectedFrame || isNavigating) return
         setIsNavigating(true)
@@ -53,7 +55,6 @@ const FrameSelectionScreen = () => {
             selectedFrame
         })
 
-        // 결제 화면으로 이동
         setTimeout(() => {
             navigate('/payment', {
                 state: {
@@ -71,7 +72,7 @@ const FrameSelectionScreen = () => {
         navigate('/upload')
     }
 
-    // 미리보기 이미지 렌더링 함수 (캐릭터/사진 구분해서 표시)
+    // 미리보기 이미지 렌더링 함수
     const renderPreviewImage = () => {
         if (!uploadedImage) return null
 
@@ -82,8 +83,8 @@ const FrameSelectionScreen = () => {
                 style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: '2px',
+                    objectFit: 'contain', // cover → contain으로 변경 (이미지 전체가 보이도록)
+                    borderRadius: '4px',
                 }}
                 onError={(e) => {
                     console.error('이미지 로드 실패:', uploadedImage);
@@ -97,27 +98,87 @@ const FrameSelectionScreen = () => {
     // 프레임 미리보기 이미지 렌더링 함수
     const renderFramePreview = (frame: typeof FRAME_TEMPLATES[0]) => {
         return (
-            <img
-                src={frame.preview}
-                alt={frame.name}
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
+            <div style={{
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+                borderRadius: '8px',
+                overflow: 'hidden',
+            }}>
+                {/* 프레임 배경 이미지 */}
+                <img
+                    src={frame.preview}
+                    alt={frame.name}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain', // cover → contain으로 변경 (이미지 전체 표시)
+                        backgroundColor: '#f9fafb', // 빈 공간이 생길 경우 배경색
+                    }}
+                    onError={(e) => {
+                        console.error('프레임 이미지 로드 실패:', frame.preview);
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                            parent.style.backgroundColor = '#f3f4f6';
+                            parent.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #6b7280; font-size: 14px; text-align: center;">${frame.name}</div>`;
+                        }
+                    }}
+                />
+                
+                {/* 프레임 중앙에 미리보기 이미지 (크기 조정) */}
+                <div style={{
+                    position: 'absolute',
+                    top: '50%',           
+                    left: '20%',          
+                    transform: 'translate(-50%, -50%)',
+                    width: '25%',         // 70% → 75%로 증가 (더 큰 이미지 영역)
+                    height: '25%',        // 55% → 60%로 증가 (더 큰 이미지 영역)
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: '2px solid rgba(0, 0, 0, 0.1)',
                     borderRadius: '4px',
-                }}
-                onError={(e) => {
-                    console.error('프레임 이미지 로드 실패:', frame.preview);
-                    const target = e.target as HTMLImageElement;
-                    // 이미지 로드 실패시 기본 색상 배경 표시
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                        parent.style.backgroundColor = '#e5e7eb';
-                        parent.innerHTML = `<span style="color: #6b7280; font-size: 12px; text-align: center;">${frame.name}</span>`;
-                    }
-                }}
-            />
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}>
+                    {uploadedImage ? (
+                        renderPreviewImage()
+                    ) : (
+                        <div style={{
+                            color: '#9ca3af',
+                            fontSize: '14px', // 12px → 14px로 증가
+                            textAlign: 'center',
+                            padding: '4px',
+                        }}>
+                            {imageType === 'character' ? '캐릭터' : '사진'}
+                        </div>
+                    )}
+                </div>
+
+                {/* 선택 표시 */}
+                {selectedFrame === frame.id && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        width: '30px',
+                        height: '30px',
+                        backgroundColor: '#ef4444',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)',
+                    }}>
+                        ✓
+                    </div>
+                )}
+            </div>
         );
     };
 
@@ -125,184 +186,148 @@ const FrameSelectionScreen = () => {
     const containerStyle: CSSProperties = {
         width: '100%',
         height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#ffffff',
+        position: 'relative',
         overflow: 'hidden',
+        backgroundColor: '#fefbf7', // 따뜻한 베이지 배경
     }
 
-    const topLogoContainerStyle: CSSProperties = {
+    const backgroundStyle: CSSProperties = {
+        position: 'absolute',
+        top: 0,
+        left: 0,
         width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingTop: '48px',
-        paddingBottom: '12px',
+        height: '100%',
+        background: 'linear-gradient(135deg, #fefbf7 0%)', // 빈티지 그라데이션
+        opacity: backgroundLoaded ? 1 : 0,
+        transition: 'opacity 1s ease-in-out',
     }
 
-    const instructionStyle: CSSProperties = {
+    const contentWrapperStyle: CSSProperties = {
+        position: 'relative',
         width: '100%',
-        textAlign: 'center',
-        fontSize: '28px',
-        color: '#1f2937',
-        marginBottom: '24px',
-        lineHeight: '1.5',
-        fontWeight: '600',
-        background: 'linear-gradient(135deg, #e6f2ff, #d1e7ff)',
-        padding: '20px 24px',
-        borderRadius: '16px',
-        boxShadow: '0 6px 12px rgba(0,0,0,0.1)',
-        border: '2px solid #3b82f6',
-        maxWidth: '800px',
-        margin: '0 auto 24px',
-    }
-
-    const contentStyle: CSSProperties = {
-        flex: 1,
-        width: '100%',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: '20px',
-        marginBottom: '200px',
+        justifyContent: 'center',
+        padding: '40px 20px',
+        zIndex: 1,
+    }
+
+    const titleStyle: CSSProperties = {
+        fontSize: '36px',
+        fontWeight: 'bold',
+        color: '#92400e', // 빈티지 브라운
+        textAlign: 'center',
+        marginBottom: '20px',
+        textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
+        fontFamily: '"Times New Roman", serif', // 클래식 폰트
+    }
+
+    const subtitleStyle: CSSProperties = {
+        fontSize: '20px',
+        color: '#a16207',
+        textAlign: 'center',
+        marginBottom: '40px',
+        fontStyle: 'italic',
     }
 
     const imageTypeIndicatorStyle: CSSProperties = {
         fontSize: '18px',
         fontWeight: '600',
-        color: imageType === 'character' ? '#8b5cf6' : '#10b981',
-        marginBottom: '16px',
-        padding: '8px 16px',
-        backgroundColor: imageType === 'character' ? '#f3e8ff' : '#d1fae5',
-        borderRadius: '20px',
-        border: `2px solid ${imageType === 'character' ? '#8b5cf6' : '#10b981'}`,
+        color: '#92400e',
+        marginBottom: '30px',
+        padding: '12px 24px',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: '25px',
+        border: '2px solid #f59e0b',
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
     }
 
     const frameGridStyle: CSSProperties = {
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '24px',
-        maxWidth: '900px',
+        gridTemplateColumns: 'repeat(2, 1fr)', // 3줄 → 2줄로 변경
+        gap: '30px', // 간격 증가
+        maxWidth: '700px', // 900px → 700px로 축소 (2열에 맞게)
         width: '100%',
-        padding: '0 40px',
         marginBottom: '40px',
+        justifyContent: 'center',
+        margin: '0 auto 40px auto',
     }
 
     const frameItemStyle: CSSProperties = {
-        width: '180px',
-        height: '200px',
-        border: '3px solid #e5e7eb',
-        borderRadius: '12px',
+        width: '320px', // 280px → 320px로 증가
+        height: '200px', // 350px → 400px로 증가
+        borderRadius: '16px',
         cursor: 'pointer',
         transition: 'all 0.3s ease',
-        backgroundColor: '#f9fafb',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+        border: '3px solid transparent',
         overflow: 'hidden',
+        position: 'relative',
     }
 
     const selectedFrameStyle: CSSProperties = {
         ...frameItemStyle,
         border: '4px solid #ef4444',
-        backgroundColor: '#fef2f2',
         transform: 'scale(1.05)',
-        boxShadow: '0 8px 16px rgba(239, 68, 68, 0.3)',
+        boxShadow: '0 12px 24px rgba(239, 68, 68, 0.3)',
     }
 
-    const framePreviewStyle: CSSProperties = {
-        width: '160px',
-        height: '160px',
-        backgroundColor: '#e5e7eb',
-        borderRadius: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '8px',
-        overflow: 'hidden',
+    const frameContentStyle: CSSProperties = {
+        width: '100%',
+        height: '100%', // 350px → 100%로 변경 (전체 카드 영역 사용)
         position: 'relative',
     }
 
-    const frameNameStyle: CSSProperties = {
-        fontSize: '14px',
-        fontWeight: '600',
-        color: '#374151',
-        textAlign: 'center',
-    }
 
     const buttonContainerStyle: CSSProperties = {
         display: 'flex',
         justifyContent: 'center',
         gap: '40px',
-        marginTop: '20px',
+        marginTop: '30px',
     }
 
     const buttonStyle: CSSProperties = {
-        padding: '20px 40px',
-        borderRadius: '16px',
-        fontSize: '24px',
+        padding: '18px 36px',
+        borderRadius: '25px',
+        fontSize: '22px',
         fontWeight: 'bold',
-        border: 'none',
-        minWidth: '200px',
+        minWidth: '180px',
         cursor: 'pointer',
         transition: 'all 0.3s ease',
+        boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+        border: 'none',
     }
 
     const backButtonStyle: CSSProperties = {
         ...buttonStyle,
-        backgroundColor: '#e5e7eb',
-        color: '#1f2937',
-        border: '3px solid #d1d5db',
+        backgroundColor: '#f3f4f6',
+        color: '#374151',
+        border: '2px solid #d1d5db',
     }
 
-    // 🔥 버튼 텍스트를 "결제하기"로 변경
     const nextButtonStyle: CSSProperties = {
         ...buttonStyle,
-        backgroundColor: selectedFrame ? '#ef4444' : '#cccccc',
+        backgroundColor: selectedFrame ? '#ef4444' : '#9ca3af',
         color: 'white',
-        border: selectedFrame ? '3px solid #ef4444' : '3px solid #cccccc',
         cursor: selectedFrame ? 'pointer' : 'not-allowed',
-        opacity: selectedFrame ? 1 : 0.6,
-    }
-
-    const bottomLogoContainerStyle: CSSProperties = {
-        position: 'absolute',
-        bottom: '30px',
-        left: 0,
-        width: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingBottom: '20px',
+        opacity: selectedFrame ? 1 : 0.7,
     }
 
     return (
         <div style={containerStyle}>
-            {/* 상단 로고 */}
-            <div style={topLogoContainerStyle}>
-                <img
-                    src="./festival_logo.png"
-                    alt="Festival Logo"
-                    className="max-h-[220px]"
-                    style={{
-                        display: 'block',
-                        margin: '0 auto',
-                        maxWidth: '80%',
-                    }}
-                />
-            </div>
-
-            {/* 안내 메시지 */}
-            <div style={instructionStyle}>
-                원하는 프레임을 선택해주세요
-            </div>
+            {/* 배경 */}
+            <div style={backgroundStyle} />
 
             {/* 메인 컨텐츠 */}
-            <div style={contentStyle}>
+            <div style={contentWrapperStyle}>
+                {/* 제목 */}
+                <h1 style={titleStyle}>
+                    💌 프레임을 선택해주세요 💌
+                </h1>
+
                 {/* 이미지 타입 표시 */}
                 <div style={imageTypeIndicatorStyle}>
                     {imageType === 'character' ? '🎭 선택한 캐릭터' : '📷 업로드한 사진'}
@@ -315,44 +340,23 @@ const FrameSelectionScreen = () => {
                             key={frame.id}
                             style={selectedFrame === frame.id ? selectedFrameStyle : frameItemStyle}
                             onClick={() => handleFrameSelect(frame.id)}
+                            onMouseEnter={(e) => {
+                                if (selectedFrame !== frame.id) {
+                                    e.currentTarget.style.transform = 'scale(1.02)';
+                                    e.currentTarget.style.boxShadow = '0 10px 20px rgba(0, 0, 0, 0.15)';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (selectedFrame !== frame.id) {
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+                                }
+                            }}
                         >
-                            <div style={framePreviewStyle}>
-                                {/* 프레임 미리보기 이미지 */}
+                            <div style={frameContentStyle}>
                                 {renderFramePreview(frame)}
-                                
-                                {/* 프레임 내부에 실제 이미지 또는 캐릭터 표시 */}
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '10px',
-                                    left: '10px',
-                                    width: '100px',
-                                    height: '80px',
-                                    backgroundColor: '#d1d5db',
-                                    border: '2px solid #9ca3af',
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                    zIndex: 1,
-                                }}>
-                                    {renderPreviewImage()}
-                                </div>
-                                
-                                {/* 선택 표시 */}
-                                {selectedFrame === frame.id && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        right: '8px',
-                                        color: '#ef4444',
-                                        fontSize: '20px',
-                                        zIndex: 2,
-                                    }}>
-                                        ✓
-                                    </div>
-                                )}
                             </div>
-                            <div style={frameNameStyle}>
-                                {frame.name}
-                            </div>
+                            {/* 프레임 이름 영역 제거 */}
                         </div>
                     ))}
                 </div>
@@ -362,6 +366,14 @@ const FrameSelectionScreen = () => {
                     <button
                         onClick={handleGoBack}
                         style={backButtonStyle}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#e5e7eb';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f3f4f6';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
                     >
                         이전으로
                     </button>
@@ -369,25 +381,43 @@ const FrameSelectionScreen = () => {
                         onClick={handleNext}
                         style={nextButtonStyle}
                         disabled={!selectedFrame}
+                        onMouseEnter={(e) => {
+                            if (selectedFrame) {
+                                e.currentTarget.style.backgroundColor = '#dc2626';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (selectedFrame) {
+                                e.currentTarget.style.backgroundColor = '#ef4444';
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }
+                        }}
                     >
-                        결제하기 {/* 🔥 텍스트 변경 */}
+                        결제하기
                     </button>
                 </div>
             </div>
 
-            {/* 하단 로고 */}
-            <div style={bottomLogoContainerStyle}>
-                <img
-                    src="./logo.png"
-                    alt="Bottom Logo"
-                    className="w-1/3 max-w-[300px] object-contain"
-                    style={{
-                        display: 'block',
-                        margin: '0 auto',
-                        maxWidth: '40%',
-                    }}
-                />
-            </div>
+            {/* 로딩 인디케이터 */}
+            {!backgroundLoaded && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: '#fef7ed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    color: '#92400e',
+                    zIndex: 10,
+                }}>
+                    프레임 로딩 중...
+                </div>
+            )}
         </div>
     )
 }

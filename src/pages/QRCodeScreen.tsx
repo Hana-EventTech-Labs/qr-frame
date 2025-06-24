@@ -19,8 +19,9 @@ const QRCodeScreen = () => {
   const [eventId, setEventId] = useState<string | null>(null)
   const [qrUrl, setQrUrl] = useState<string | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null) // 선택된 캐릭터
-  const [showCharacterModal, setShowCharacterModal] = useState(false) // 캐릭터 선택 모달
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null)
+  const [showCharacterModal, setShowCharacterModal] = useState(false)
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false)
 
   useEffect(() => {
     const createSession = async () => {
@@ -52,13 +53,12 @@ const QRCodeScreen = () => {
             const imageUrl = `https://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app${data.image_url}`
 
             try {
-              // 이미지 화질 개선
               const enhancedImageUrl = await enhanceImageQuality(imageUrl)
               setUploadedImage(enhancedImageUrl)
-              setSelectedCharacter(null) // 사진이 업로드되면 캐릭터 선택 해제
+              setSelectedCharacter(null)
             } catch (err) {
               console.error('이미지 화질 개선 실패:', err)
-              setUploadedImage(imageUrl) // 실패시 원본 이미지 사용
+              setUploadedImage(imageUrl)
               setSelectedCharacter(null)
             }
           }
@@ -81,38 +81,33 @@ const QRCodeScreen = () => {
   const enhanceImageQuality = (imageUrl: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image()
-      img.crossOrigin = 'anonymous' // CORS 문제 해결
+      img.crossOrigin = 'anonymous'
 
       img.onload = () => {
-        // 캔버스 생성
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
 
         if (!ctx) {
           console.error('Canvas context를 가져올 수 없습니다.')
-          resolve(imageUrl) // 원본 이미지 URL 반환
+          resolve(imageUrl)
           return
         }
 
-        // 원본 이미지 크기 유지
         canvas.width = img.naturalWidth
         canvas.height = img.naturalHeight
 
-        // 고품질 이미지 렌더링 설정
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
 
-        // 이미지 그리기
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
-        // 고품질 이미지 데이터 URL 생성 (품질 0.95로 설정)
         const enhancedImageUrl = canvas.toDataURL('image/jpeg', 0.95)
         resolve(enhancedImageUrl)
       }
 
       img.onerror = (err) => {
         console.error('이미지 로드 실패:', err)
-        resolve(imageUrl) // 실패 시 원본 URL 반환
+        resolve(imageUrl)
       }
 
       img.src = imageUrl
@@ -124,7 +119,6 @@ const QRCodeScreen = () => {
     try {
       console.log('이미지 저장 시작', url)
 
-      // fileApi가 있는지 확인 (Electron 환경)
       if (window.fileApi) {
         console.log('Electron fileApi 사용')
         const result = await window.fileApi.saveImageFromUrl(url, filename)
@@ -136,10 +130,8 @@ const QRCodeScreen = () => {
         console.log('이미지 저장 성공:', result.filePath)
         return result.filePath
       } else {
-        // 일반 브라우저 환경에서는 다운로드 대화상자 사용
         console.log('일반 브라우저 다운로드 사용')
 
-        // Data URL인 경우 바로 다운로드
         if (url.startsWith('data:')) {
           const a = document.createElement('a')
           a.href = url
@@ -147,7 +139,6 @@ const QRCodeScreen = () => {
           a.click()
           console.log('Data URL 이미지 다운로드 시작')
         } else {
-          // URL인 경우 fetch로 다운로드
           const response = await fetch(url)
           const blob = await response.blob()
           const objectUrl = URL.createObjectURL(blob)
@@ -172,7 +163,7 @@ const QRCodeScreen = () => {
     const character = CHARACTER_IMAGES.find(char => char.id === characterId)
     if (character) {
       setSelectedCharacter(character.image)
-      setUploadedImage(null) // 캐릭터 선택시 업로드된 이미지 해제
+      setUploadedImage(null)
       setShowCharacterModal(false)
       console.log('🎭 캐릭터 선택됨:', character.name)
     }
@@ -183,7 +174,6 @@ const QRCodeScreen = () => {
     const imageToUse = uploadedImage || selectedCharacter
 
     if (imageToUse) {
-      // 이미지 저장 (업로드된 사진이든 캐릭터든)
       await saveImageToLocal(imageToUse)
     }
 
@@ -205,12 +195,11 @@ const QRCodeScreen = () => {
       }
     }
 
-    // navigate state로 이미지 URL과 타입 전달
     setTimeout(() => {
       navigate('/frame', {
         state: {
           uploadedImage: imageToUse,
-          imageType: uploadedImage ? 'photo' : 'character' // 이미지 타입 구분
+          imageType: uploadedImage ? 'photo' : 'character'
         }
       })
     }, 100)
@@ -239,18 +228,14 @@ const QRCodeScreen = () => {
 
   // 앱 종료 함수
   const handleCloseApp = () => {
-    try {
-      if (window.electronAPI?.closeApp) {
-        window.electronAPI.closeApp()
-      } else {
-        console.log('Electron API를 찾을 수 없습니다. 브라우저 환경에서는 앱을 종료할 수 없습니다.')
-      }
-    } catch (error) {
-      console.error('앱 종료 중 오류:', error)
+    if (window.electronAPI) {
+      window.electronAPI.closeApp()
+    } else {
+      console.log('Electron API를 찾을 수 없습니다. 브라우저 환경에서는 앱을 종료할 수 없습니다.')
     }
   }
 
-  // 캐릭터 이미지 렌더링 함수 (에러 처리 포함)
+  // 캐릭터 이미지 렌더링 함수
   const renderCharacterImage = (character: typeof CHARACTER_IMAGES[0]) => {
     return (
       <img
@@ -266,7 +251,6 @@ const QRCodeScreen = () => {
         onError={(e) => {
           console.error('캐릭터 이미지 로드 실패:', character.image);
           const target = e.target as HTMLImageElement;
-          // 이미지 로드 실패시 기본 배경색과 텍스트 표시
           target.style.display = 'none';
           const parent = target.parentElement;
           if (parent) {
@@ -293,60 +277,22 @@ const QRCodeScreen = () => {
   const containerStyle: CSSProperties = {
     width: '100%',
     height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     position: 'relative',
-    backgroundColor: '#ffffff',
     overflow: 'hidden',
   }
 
-  const topLogoContainerStyle: CSSProperties = {
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: '48px',
-    paddingBottom: '12px',
-  }
-
-  const ratioGuideStyle: CSSProperties = {
-    width: '100%',
-    textAlign: 'center',
-    fontSize: '22px',
-    color: '#1f2937',
-    marginBottom: '16px',
-    lineHeight: '1.6',
-    fontWeight: '600',
-    background: 'linear-gradient(to right, #f0f4f8, #e6f2ff)',
-    padding: '12px 20px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-    border: '1px solid #e0e7ff',
-    maxWidth: '700px',
-    margin: '0 auto',
-  }
-
-  const contentContainerStyle: CSSProperties = {
-    flex: '1',
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingTop: '20px',
-    marginBottom: '150px',
-  }
-
-  const bottomLogoContainerStyle: CSSProperties = {
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+  const backgroundStyle: CSSProperties = {
     position: 'absolute',
-    bottom: '30px',
+    top: 0,
     left: 0,
-    paddingBottom: '20px',
+    width: '100%',
+    height: '100%',
+    backgroundImage: 'url(./qrscreen.png)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    opacity: backgroundLoaded ? 1 : 0,
+    transition: 'opacity 1s ease-in-out',
   }
 
   const closeButtonStyle: CSSProperties = {
@@ -365,7 +311,6 @@ const QRCodeScreen = () => {
     zIndex: 100,
   }
 
-  // 캐릭터 선택 버튼 스타일
   const characterButtonStyle: CSSProperties = {
     padding: '16px 32px',
     borderRadius: '12px',
@@ -378,6 +323,70 @@ const QRCodeScreen = () => {
     boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
     transition: 'all 0.3s ease',
     marginBottom: '20px',
+    position: 'absolute',
+    top: '150px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 10,
+  }
+
+  const selectedImageDisplayStyle: CSSProperties = {
+    width: '400px',
+    height: '300px',
+    border: '3px solid #8b5cf6',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f3e8ff',
+    position: 'absolute',
+    top: '250px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 10,
+  }
+
+  const qrContainerStyle: CSSProperties = {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 10,
+  }
+
+  const buttonContainerStyle: CSSProperties = {
+    position: 'absolute',
+    bottom: '250px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    gap: '40px',
+    zIndex: 10,
+  }
+
+  const buttonStyle: CSSProperties = {
+    padding: '24px 48px',
+    borderRadius: '16px',
+    fontSize: '24px',
+    fontWeight: 'bold',
+    minWidth: '200px',
+    boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
+    cursor: 'pointer',
+  }
+
+  const resetButtonStyle: CSSProperties = {
+    ...buttonStyle,
+    backgroundColor: '#e5e7eb',
+    color: '#1f2937',
+    border: '3px solid #d1d5db',
+  }
+
+  const nextButtonStyle: CSSProperties = {
+    ...buttonStyle,
+    backgroundColor: (uploadedImage || selectedCharacter) ? '#ef4444' : '#cccccc',
+    color: 'white',
+    border: (uploadedImage || selectedCharacter) ? '3px solid #ef4444' : '3px solid #cccccc',
+    cursor: (uploadedImage || selectedCharacter) ? 'pointer' : 'not-allowed',
   }
 
   // 모달 스타일
@@ -424,20 +433,49 @@ const QRCodeScreen = () => {
     backgroundColor: '#f9fafb',
   }
 
-  const selectedImageDisplayStyle: CSSProperties = {
-    width: '400px',
-    height: '300px',
-    border: '3px solid #8b5cf6',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f3e8ff',
-    marginBottom: '20px',
-  }
-
   return (
     <div style={containerStyle}>
+      {/* 배경 이미지 */}
+      <div style={backgroundStyle} />
+
+      {/* 백업 이미지 로드 체크 */}
+      <img
+        src="./qrscreen.png"
+        alt="QR Screen Background"
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          pointerEvents: 'none',
+        }}
+        onLoad={() => setBackgroundLoaded(true)}
+        onError={() => {
+          console.log('qrscreen.png를 찾을 수 없습니다.');
+          setBackgroundLoaded(true); // 에러여도 진행
+        }}
+      />
+
+      {/* 로딩 인디케이터 */}
+      {!backgroundLoaded && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#64748b',
+            fontSize: '32px',
+            fontWeight: '600',
+          }}
+        >
+          배경 로딩 중...
+        </div>
+      )}
+
       {/* 앱 종료 버튼 */}
       <button
         onClick={handleCloseApp}
@@ -451,157 +489,93 @@ const QRCodeScreen = () => {
         }}>종료</span>
       </button>
 
-      {/* 상단 로고 */}
-      <div style={topLogoContainerStyle}>
-        <img
-          src="./festival_logo.png"
-          alt="Festival Logo"
-          className="max-h-[220px]"
-          style={{
-            display: 'block',
-            margin: '0 auto',
-            maxWidth: '80%',
-          }}
-        />
-      </div>
+      {/* 캐릭터 선택 버튼 */}
+      <button
+        onClick={() => setShowCharacterModal(true)}
+        style={characterButtonStyle}
+        onMouseOver={(e) => {
+          const target = e.target as HTMLButtonElement
+          target.style.backgroundColor = '#e9d5ff'
+          target.style.transform = 'translateX(-50%) scale(1.05)'
+        }}
+        onMouseOut={(e) => {
+          const target = e.target as HTMLButtonElement
+          target.style.backgroundColor = '#f3e8ff'
+          target.style.transform = 'translateX(-50%) scale(1)'
+        }}
+      >
+        🎭 귀여운 캐릭터 선택하기
+      </button>
 
-      {/* 비율 안내 메시지 */}
-      <div style={ratioGuideStyle}>
-        QR코드를 카메라로 인식 한 후,<br />
-        반드시 가로형 4:3 비율의 사진을 업로드해주세요.<br />
-        <span style={{ color: 'Red', fontWeight: '600' }}>
-          ※ 가로가 아니거나 비율이 다르면 이미지가 변형되어 인쇄됩니다
-        </span>
-      </div>
-
-      {/* 중앙 QR 코드 + 버튼 */}
-      <div style={contentContainerStyle}>
-        <div className="w-full max-w-[600px] flex flex-col items-center gap-12">
-          
-          {/* 캐릭터 선택 버튼 */}
-          <button
-            onClick={() => setShowCharacterModal(true)}
-            style={characterButtonStyle}
-            onMouseOver={(e) => {
-              const target = e.target as HTMLButtonElement
-              target.style.backgroundColor = '#e9d5ff'
-              target.style.transform = 'scale(1.05)'
-            }}
-            onMouseOut={(e) => {
-              const target = e.target as HTMLButtonElement
-              target.style.backgroundColor = '#f3e8ff'
-              target.style.transform = 'scale(1)'
-            }}
-          >
-            🎭 귀여운 캐릭터 선택하기
-          </button>
-
-          {/* 선택된 캐릭터 표시 */}
-          {selectedCharacter && (
-            <div style={selectedImageDisplayStyle}>
-              <img
-                src={selectedCharacter}
-                alt="Selected Character"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  borderRadius: '8px',
-                }}
-                onError={(e) => {
-                  console.error('선택된 캐릭터 이미지 로드 실패:', selectedCharacter);
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent) {
-                    parent.style.backgroundColor = '#e5e7eb';
-                    parent.innerHTML = '<span style="color: #6b7280; font-size: 16px;">이미지를 불러올 수 없습니다</span>';
-                  }
-                }}
-              />
-            </div>
-          )}
-
-          {/* QR 코드 or 업로드된 이미지 */}
-          <div className="flex justify-center items-center w-full">
-            {uploadedImage ? (
-              <img
-                src={uploadedImage}
-                alt="Uploaded"
-                style={{
-                  width: '500px',
-                  height: '500px',
-                  objectFit: 'contain',
-                  borderRadius: '16px',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                  display: 'block',
-                  marginLeft: 'auto',
-                  marginRight: 'auto',
-                }}
-              />
-            ) : !selectedCharacter && qrUrl ? (
-              <QRCodeSVG
-                value={qrUrl}
-                size={600}
-                level="H"
-                includeMargin
-                style={{
-                  display: 'block',
-                  marginLeft: 'auto',
-                  marginRight: 'auto',
-                }}
-              />
-            ) : !selectedCharacter && !qrUrl ? (
-              <p className="text-xl text-gray-500">QR 코드를 불러오는 중...</p>
-            ) : null}
-          </div>
-
-          {/* 버튼 */}
-          <div
+      {/* 선택된 캐릭터 표시 */}
+      {selectedCharacter && (
+        <div style={selectedImageDisplayStyle}>
+          <img
+            src={selectedCharacter}
+            alt="Selected Character"
             style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '40px',
-              marginTop: '68px',
-              marginBottom: '120px',
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              borderRadius: '8px',
             }}
-          >
-            <button
-              onClick={handleReset}
-              style={{
-                backgroundColor: '#e5e7eb',
-                color: '#1f2937',
-                padding: '24px 48px',
-                borderRadius: '16px',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                border: '3px solid #d1d5db',
-                minWidth: '200px',
-                boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
-              }}
-            >
-              처음으로
-            </button>
-            <button
-              onClick={handleNext}
-              style={{
-                backgroundColor: (uploadedImage || selectedCharacter) ? '#ef4444' : '#cccccc',
-                color: 'white',
-                padding: '24px 48px',
-                borderRadius: '16px',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                border: (uploadedImage || selectedCharacter) ? '3px solid #ef4444' : '3px solid #cccccc',
-                minWidth: '200px',
-                boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
-                cursor: (uploadedImage || selectedCharacter) ? 'pointer' : 'not-allowed',
-              }}
-              disabled={!uploadedImage && !selectedCharacter}
-            >
-              다음으로
-            </button>
-          </div>
+            onError={(e) => {
+              console.error('선택된 캐릭터 이미지 로드 실패:', selectedCharacter);
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.style.backgroundColor = '#e5e7eb';
+                parent.innerHTML = '<span style="color: #6b7280; font-size: 16px;">이미지를 불러올 수 없습니다</span>';
+              }
+            }}
+          />
         </div>
+      )}
+
+      {/* QR 코드 or 업로드된 이미지 */}
+      {!selectedCharacter && (
+        <div style={qrContainerStyle}>
+          {uploadedImage ? (
+            <img
+              src={uploadedImage}
+              alt="Uploaded"
+              style={{
+                width: '500px',
+                height: '500px',
+                objectFit: 'contain',
+                borderRadius: '16px',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+              }}
+            />
+          ) : qrUrl ? (
+            <QRCodeSVG
+              value={qrUrl}
+              size={600}
+              level="H"
+              includeMargin
+            />
+          ) : (
+            <p style={{ color: '#6b7280', fontSize: '24px' }}>QR 코드를 불러오는 중...</p>
+          )}
+        </div>
+      )}
+
+      {/* 버튼 영역 */}
+      <div style={buttonContainerStyle}>
+        <button
+          onClick={handleReset}
+          style={resetButtonStyle}
+        >
+          처음으로
+        </button>
+        <button
+          onClick={handleNext}
+          style={nextButtonStyle}
+          disabled={!uploadedImage && !selectedCharacter}
+        >
+          다음으로
+        </button>
       </div>
 
       {/* 캐릭터 선택 모달 */}
@@ -674,22 +648,21 @@ const QRCodeScreen = () => {
           </div>
         </div>
       )}
-
-      {/* 하단 로고 */}
-      <div style={bottomLogoContainerStyle}>
-        <img
-          src="./logo.png"
-          alt="Bottom Logo"
-          className="w-1/3 max-w-[300px] object-contain"
-          style={{
-            display: 'block',
-            margin: '0 auto',
-            maxWidth: '40%',
-          }}
-        />
-      </div>
     </div>
   )
+}
+
+// window 타입에 fileApi 추가
+declare global {
+  interface Window {
+    fileApi?: {
+      saveImageFromUrl: (url: string, filename: string) => Promise<{
+        success: boolean;
+        filePath?: string;
+        error?: string;
+      }>;
+    };
+  }
 }
 
 export default QRCodeScreen
