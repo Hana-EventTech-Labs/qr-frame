@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, CSSProperties } from 'react';
 import { useLocation } from 'react-router-dom';
 import { printerApi } from '../services/printerApi';
 import { printLogService } from '../services/printLogService';
-import { globalState } from '../services/globalState';
+import { globalStateService } from '../services/globalState';
 
 declare global {
   interface Window {
@@ -159,7 +159,7 @@ const PrintingScreen = () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       try {
-        const printLogData = globalState.getPrintLogData();
+        const printLogData = globalStateService.getPrintLogData();
         console.log('📝 인쇄 로그 데이터:', printLogData);
 
         const logResult = await printLogService.savePrintLog(printLogData);

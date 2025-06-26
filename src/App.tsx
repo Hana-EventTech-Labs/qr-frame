@@ -5,6 +5,7 @@ import FrameSelectionScreen from './pages/FrameSelectionScreen'
 import PaymentScreen from './pages/PaymentScreen' // 🔥 결제 화면 추가
 import PrintingScreen from './pages/PrintingScreen'
 import CompleteScreen from './pages/CompleteScreen'
+import AdminExitButton from './components/AdminExitButton' // 🔐 관리자 종료 버튼 추가
 
 function App() {
   return (
@@ -24,6 +25,9 @@ function App() {
         <Route path="/printing" element={<PrintingScreen />} />
         <Route path="/complete" element={<CompleteScreen />} />
       </Routes>
+      
+      {/* 🔐 모든 화면에서 사용 가능한 관리자 종료 버튼 */}
+      <AdminExitButton />
     </div>
   )
 }
