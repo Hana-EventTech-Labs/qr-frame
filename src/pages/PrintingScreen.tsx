@@ -8,25 +8,50 @@ declare global {
   interface Window {
     envApi: {
       cwd: () => string;
+      env: {
+        cwd: () => string;
+        downloadPath: () => string;
+        resourcesPath: () => string;
+        isDev: () => boolean;
+      };
     };
-    env: {
-      cwd: () => string;
-      downloadPath: () => string;
-      resourcesPath: () => string;
-      isDev: () => boolean;
+    imagesPreloaded?: boolean;
+    fs: {
+      writeFileSync: (path: string, data: Uint8Array) => void;
+    };
+    fileApi?: {
+      saveImageFromUrl: (
+        dataUrl: string,
+        fileName: string
+      ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
     };
   }
 }
 
+// ✅ 전역 이동 함수
+const goToMainScreen = () => {
+  window.location.hash = '#/';
+};
+
 const PrintingScreen = () => {
   const location = useLocation();
-  const [dots, setDots] = useState('...');
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<string>('준비 중...');
+  const [, setDots] = useState('...');
+  const [, setProgress] = useState(0);
+  const [, setStatus] = useState<string>('준비 중...');
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
   const hasStartedRef = useRef(false);
 
   useEffect(() => {
+    if (window.imagesPreloaded) {
+      setBackgroundLoaded(true);
+    } else {
+      const img = new Image();
+      img.onload = () => setBackgroundLoaded(true);
+      img.onerror = () => setBackgroundLoaded(true);
+      img.src = './process.png';
+    }
+
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
 
@@ -39,11 +64,11 @@ const PrintingScreen = () => {
     });
 
     const dotsInterval = setInterval(() => {
-      setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
+      setDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
     }, 500);
 
     const progressInterval = setInterval(() => {
-      setProgress(prev => Math.min(prev + 1, 95));
+      setProgress((prev) => Math.min(prev + 1, 95));
     }, 250);
 
     return () => {
@@ -55,7 +80,6 @@ const PrintingScreen = () => {
 
   const doPrint = async () => {
     try {
-      // 전달받은 데이터 확인
       const { uploadedImage, selectedFrame } = location.state || {};
       console.log('업로드된 이미지:', uploadedImage ? '있음' : '없음');
       console.log('선택된 프레임:', selectedFrame);
@@ -63,7 +87,7 @@ const PrintingScreen = () => {
       setStatus('프린터 연결 중...');
       setProgress(10);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const listResult = await printerApi.getDeviceList();
       if (!listResult.success || !listResult.devices || listResult.devices.length === 0) {
@@ -72,7 +96,7 @@ const PrintingScreen = () => {
 
       const selectedDevice = listResult.devices[0];
       setProgress(30);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const openResult = await printerApi.openDevice(selectedDevice.id);
       if (!openResult.success) {
@@ -81,72 +105,49 @@ const PrintingScreen = () => {
 
       setProgress(40);
       setStatus('이미지 처리 중...');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // 🔥 프레임 먼저 그리기 (배경)
-      if (selectedFrame) {
-        console.log(`🖼️ 프레임 ${selectedFrame} 그리기 시작...`);
+      let finalImagePath: string;
 
-        // 개발/빌드 환경에 따른 프레임 경로 설정
-        let framePath: string;
-        const isDev = window.env.isDev();
-
-        if (isDev) {
-          // 개발 환경: 현재 작업 디렉토리 기준
-          const cwd = window.env.cwd();
-          framePath = `${cwd}\\public\\frames\\${selectedFrame}.png`;
-        } else {
-          // 빌드 환경: process.resourcesPath 기준
-          const resourcesPath = window.env.resourcesPath();
-          framePath = `${resourcesPath}\\public\\frames\\${selectedFrame}.png`;
+      if (selectedFrame && selectedFrame !== 'completed') {
+        // 📌 직접 프레임 선택: 합성 필요
+        finalImagePath = await compositeFrameAndPhoto(selectedFrame, uploadedImage);
+      } else if (location.state?.imageType === 'frame' || selectedFrame === 'completed') {
+        // 📌 완성본 선택: 저장 후 경로 사용
+        const saved = await window.fileApi!.saveImageFromUrl(
+          uploadedImage,
+          'completed_frame.png'
+        );
+        if (!saved.success || !saved.filePath) {
+          throw new Error(saved.error || '완성본 이미지 저장 실패');
         }
-
-        console.log('프레임 경로:', framePath);
-        console.log('환경:', isDev ? '개발' : '빌드');
-
-        const frameResult = await printerApi.drawImage({
-          page: 0,     // 페이지 번호
-          panel: 1,    // 패널 번호 (프론트)
-          x: 0,        // 전체 카드 크기로 프레임 그리기
-          y: 0,
-          width: 635,  // 카드 전체 너비
-          height: 1010, // 카드 전체 높이
-          imagePath: framePath,
-        });
-
-        if (!frameResult.success) {
-          console.warn('⚠️ 프레임 그리기 실패, 계속 진행:', frameResult.error);
-          // 프레임 실패해도 사진은 인쇄하도록 계속 진행
-        } else {
-          console.log('✅ 프레임 그리기 성공');
-        }
+        finalImagePath = saved.filePath;
+      } else {
+        // 📌 원본만: 리사이즈 필요
+        finalImagePath = await resizeImageForCard(uploadedImage);
       }
 
       setProgress(60);
-      setStatus('사진 인쇄 준비 중...');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      setStatus('이미지 인쇄 중...');
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // 🔥 사진 이미지 그리기 (프레임 위에)
-      const photoPath = `${window.env.downloadPath()}\\photo.png`;
-      console.log('사진 경로:', photoPath);
-
-      const photoImgResult = await printerApi.drawImage({
+      const drawResult = await printerApi.drawImage({
         page: 0,
         panel: 1,
-        x: 46,        // 사진 영역 X 좌표
-        y: 90,        // 사진 영역 Y 좌표  
-        width: 543,   // 사진 영역 너비
-        height: 442,  // 사진 영역 높이
-        imagePath: photoPath,
+        x: 0,
+        y: 0,
+        width: 1010, // ✅ 가로형 카드에 맞게 수정
+        height: 635,
+        imagePath: finalImagePath,
       });
 
-      if (!photoImgResult.success) {
-        throw new Error('사진 이미지 그리기에 실패했습니다: ' + photoImgResult.error);
+      if (!drawResult.success) {
+        throw new Error('이미지 인쇄에 실패했습니다: ' + drawResult.error);
       }
 
       setProgress(80);
       setStatus('인쇄 중...');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const printResult = await printerApi.print();
       if (!printResult.success) {
@@ -155,9 +156,8 @@ const PrintingScreen = () => {
 
       setProgress(90);
       setStatus('로그 저장 중...');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // 🔥 인쇄 완료 후 logs 테이블에 기록 저장
       try {
         const printLogData = globalState.getPrintLogData();
         console.log('📝 인쇄 로그 데이터:', printLogData);
@@ -166,14 +166,11 @@ const PrintingScreen = () => {
 
         if (!logResult.success) {
           console.error('⚠️ 인쇄 로그 저장 실패:', logResult.error);
-          // 인쇄는 성공했으므로 로그 실패해도 계속 진행
-          // 사용자에게는 성공으로 표시하되, 콘솔에만 오류 기록
         } else {
           console.log('✅ 인쇄 로그 저장 성공');
         }
       } catch (logError) {
         console.error('⚠️ 인쇄 로그 저장 중 예외 발생:', logError);
-        // 인쇄는 성공했으므로 로그 실패해도 계속 진행
       }
 
       setProgress(100);
@@ -183,7 +180,6 @@ const PrintingScreen = () => {
       setTimeout(() => {
         window.location.hash = '#/complete';
       }, 1000);
-
     } catch (error) {
       console.error('❌ 인쇄 과정 오류:', error);
       setStatus('오류 발생');
@@ -191,229 +187,248 @@ const PrintingScreen = () => {
     }
   };
 
-  // 메인 화면으로 돌아가기 함수
-  const goToMainScreen = () => {
-    window.location.hash = '#/';
+  const compositeFrameAndPhoto = async (
+    frameId: string,
+    photoDataUrl: string
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Canvas context를 생성할 수 없습니다.'));
+        return;
+      }
+
+      // ✅ 가로형 카드 캔버스
+      canvas.width = 1010;
+      canvas.height = 635;
+
+      const frameImg = new Image();
+      frameImg.onload = () => {
+        ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+
+        const photoImg = new Image();
+        photoImg.onload = async () => {
+          // ✅ 가로/세로 판별
+          const isLandscape = photoImg.width > photoImg.height;
+
+          let targetX: number, targetY: number, targetWidth: number, targetHeight: number;
+
+          if (isLandscape) {
+            // 기준 높이
+            const baseHeight = canvas.height * 0.33;
+
+            // 👉 가로 크기는 이 높이로 aspect ratio 계산
+            const aspectRatio = photoImg.width / photoImg.height;
+            targetWidth = baseHeight * aspectRatio;
+
+            // 👉 높이는 별도 고정 (예: baseHeight + 30)
+            targetHeight = baseHeight + 150;
+
+            // 좌표
+            targetX = 65;
+            targetY = (canvas.height - targetHeight) / 2;
+
+            console.log('📐 가로형:', { targetX, targetY, targetWidth, targetHeight });
+          } else {
+            // 📐 세로형 설정
+            const targetHeightPortrait = canvas.height * 0.59;
+            const aspectRatio = photoImg.width / photoImg.height;
+            targetWidth = targetHeightPortrait * aspectRatio;
+
+            targetX = 65; // 세로형 X 시작
+            targetY = (canvas.height - targetHeightPortrait) / 2;
+
+            targetHeight = targetHeightPortrait;
+
+            console.log('📐 세로형:', { targetX, targetY, targetWidth, targetHeight });
+          }
+
+          // ✅ 최종 이미지 그리기
+          ctx.drawImage(photoImg, targetX, targetY, targetWidth, targetHeight);
+
+          const dataUrl = canvas.toDataURL('image/png');
+
+          // ✅ 저장
+          const result = await window.fileApi!.saveImageFromUrl(dataUrl, 'final_composite.png');
+          if (result.success && result.filePath) {
+            resolve(result.filePath);
+          } else {
+            reject(new Error(result.error || '파일 저장 실패'));
+          }
+        };
+
+        photoImg.onerror = () => reject(new Error('사진 이미지 로드 실패'));
+        photoImg.src = photoDataUrl;
+      };
+
+      frameImg.onerror = () => reject(new Error('프레임 이미지 로드 실패'));
+      frameImg.src = `./frames/${frameId}.jpg`;
+    });
   };
 
-  // 스타일 정의
+
+
+  const resizeImageForCard = async (imageDataUrl: string): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Canvas context를 생성할 수 없습니다.'));
+        return;
+      }
+
+      canvas.width = 1010;
+      canvas.height = 635;
+
+      const img = new Image();
+      img.onload = async () => {
+        ctx.drawImage(img, 0, 0, 1010, 635);
+
+        const dataUrl = canvas.toDataURL('image/png');
+
+        try {
+          const result = await window.fileApi!.saveImageFromUrl(
+            dataUrl,
+            'resized_image.png'
+          );
+          if (result.success && result.filePath) {
+            console.log('✅ 리사이즈 이미지 저장 완료:', result.filePath);
+            resolve(result.filePath);
+          } else {
+            reject(new Error(result.error || '파일 저장 실패'));
+          }
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = () => reject(new Error('이미지 로드 실패'));
+      img.src = imageDataUrl;
+    });
+  };
+
   const containerStyle: CSSProperties = {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    overflow: 'hidden',
+  };
+
+  const backgroundStyle: CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundImage: 'url(./process.png)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    opacity: backgroundLoaded ? 1 : 0,
+    transition: 'opacity 0.3s ease-in-out',
+  };
+
+  const contentWrapperStyle: CSSProperties = {
+    position: 'relative',
     width: '100%',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'relative',
-    backgroundColor: '#ffffff',
-    overflow: 'hidden',
-  };
-
-  const topLogoContainerStyle: CSSProperties = {
-    width: '100%',
-    display: 'flex',
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: '48px',
-    paddingBottom: '24px',
-    minHeight: '220px',
-  };
-
-  const contentStyle: CSSProperties = {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    textAlign: 'center',
-    marginTop: '20px',
-    marginBottom: '20px',
-    position: 'relative',
     zIndex: 1,
   };
 
-  const mainTextStyle: CSSProperties = {
-    fontSize: '72px',
-    fontWeight: 'bold',
-    color: '#e75480',
-    marginBottom: '30px',
-    textShadow: '2px 2px 4px rgba(0, 0, 0, 0.1)',
+  const printingBoxStyle: CSSProperties = {
+    background: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: '24px',
+    padding: '60px',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
+    border: '3px solid #f59e0b',
+    maxWidth: '600px',
+    width: '90%',
+    textAlign: 'center',
+    backdropFilter: 'blur(10px)',
   };
 
   const errorDetailsStyle: CSSProperties = {
     fontSize: '18px',
-    color: '#555',
-    marginTop: '10px',
-    padding: '10px',
-    backgroundColor: '#f8f8f8',
-    borderRadius: '5px',
-    maxWidth: '80%',
+    color: '#dc2626',
+    marginTop: '20px',
+    padding: '15px',
+    backgroundColor: '#fef2f2',
+    borderRadius: '8px',
+    border: '1px solid #fecaca',
     textAlign: 'left',
   };
 
-  const progressContainerStyle: CSSProperties = {
-    width: '60%',
-    height: '25px',
-    backgroundColor: '#f8f9fa',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    marginTop: '30px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #e0e0e0',
-  };
-
-  const progressBarStyle: CSSProperties = {
-    height: '100%',
-    width: `${progress}%`,
-    background: errorDetails
-      ? 'linear-gradient(90deg, #e74c3c 0%, #c0392b 100%)'
-      : 'linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%)',
-    borderRadius: '12px',
-    transition: 'width 0.3s ease',
-  };
-
-  const iconContainerStyle: CSSProperties = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: '20px',
-    position: 'relative',
-  };
-
-  const printerIconStyle: CSSProperties = {
-    fontSize: '100px',
-    filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))',
-  };
-
-  const carnationStyle: CSSProperties = {
-    fontSize: '44px',
-    position: 'absolute',
-    zIndex: 2,
-  };
-
-  const bottomLogoContainerStyle: CSSProperties = {
-    position: 'absolute',
-    bottom: '30px',
-    left: 0,
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: '20px',
-    zIndex: 1,
-  };
-
-  const verticalDecorStyle: CSSProperties = {
-    position: 'absolute',
-    height: '80%',
-    width: '10px',
-    top: '10%',
-    background: 'linear-gradient(to bottom, rgba(231, 84, 128, 0.1), rgba(76, 175, 80, 0.1))',
-    borderRadius: '5px',
-    zIndex: 0,
-  };
-
   const buttonStyle: CSSProperties = {
-    padding: '12px 24px',
-    backgroundColor: '#4CAF50',
-    color: '#fff',
+    padding: '15px 30px',
+    backgroundColor: '#ef4444',
+    color: 'white',
     border: 'none',
-    borderRadius: '8px',
-    fontSize: '18px',
+    borderRadius: '12px',
+    fontSize: '20px',
     fontWeight: 'bold',
     cursor: 'pointer',
     marginTop: '20px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 6px 12px rgba(239, 68, 68, 0.3)',
     transition: 'all 0.3s ease',
   };
 
   return (
-    <div style={containerStyle} className="relative">
-      <style>
-        {`
-          @keyframes bounce {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-10px); }
-          }
-          @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.9; transform: scale(1.03); }
-            100% { opacity: 1; transform: scale(1); }
-          }
-          @keyframes gentle-float {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-8px) rotate(3deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-          }
-          .printer-icon { animation: bounce 1.5s infinite alternate; }
-          .message-text { animation: pulse 2.5s infinite; }
-          .carnation { animation: gentle-float 3s infinite; }
-          .decor-left { left: 30px; animation: pulse 4s infinite; }
-          .decor-right { right: 30px; animation: pulse 4s infinite 1s; }
-        `}
-      </style>
+    <div style={containerStyle}>
+      <div style={backgroundStyle} />
 
-      <div style={verticalDecorStyle} className="decor-left"></div>
-      <div style={verticalDecorStyle} className="decor-right"></div>
-
-      <div style={topLogoContainerStyle}>
-        <img
-          src="./festival_logo.png"
-          alt="Festival Logo"
-          className="max-h-[220px]"
-          style={{ display: 'block', margin: '0 auto', maxWidth: '80%' }}
-        />
-      </div>
-
-      <div style={contentStyle}>
-        <div style={iconContainerStyle}>
-          <div style={printerIconStyle} className="printer-icon">
-            <span role="img" aria-label="printer">🖨️</span>
-          </div>
-          <div style={{ ...carnationStyle, top: '-20px', left: '135px' }} className="carnation">
-            <span role="img" aria-label="carnation">🌸</span>
-          </div>
-          <div style={{ ...carnationStyle, bottom: '-15px', right: '135px' }} className="carnation">
-            <span role="img" aria-label="carnation">🌸</span>
+      {!backgroundLoaded && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, #fefbf7 0%, #fef3e2 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#92400e',
+            fontSize: '32px',
+            fontWeight: '600',
+            zIndex: 1000,
+          }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+            화면 준비 중...
           </div>
         </div>
+      )}
 
-        <div style={mainTextStyle} className="message-text">
-          {status}{dots}
+      {errorDetails && (
+        <div style={contentWrapperStyle}>
+          <div style={printingBoxStyle}>
+            <div style={errorDetailsStyle}>{errorDetails}</div>
+            <button
+              style={buttonStyle}
+              onClick={goToMainScreen}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#ef4444';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              메인 화면으로 돌아가기
+            </button>
+          </div>
         </div>
-
-        {errorDetails && <div style={errorDetailsStyle}>{errorDetails}</div>}
-
-        {errorDetails && (
-          <button
-            style={buttonStyle}
-            onClick={goToMainScreen}
-            onMouseOver={(e: { currentTarget: { style: { backgroundColor: string; transform: string; }; }; }) => {
-              e.currentTarget.style.backgroundColor = '#45a049';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseOut={e => {
-              e.currentTarget.style.backgroundColor = '#4CAF50';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            메인 화면으로 돌아가기
-          </button>
-        )}
-
-        <div style={progressContainerStyle}>
-          <div style={progressBarStyle}></div>
-        </div>
-      </div>
-
-      <div style={bottomLogoContainerStyle}>
-        <img
-          src="./logo.png"
-          alt="Bottom Logo"
-          className="w-1/3 max-w-[300px] object-contain"
-          style={{ display: 'block', margin: '0 auto', maxWidth: '40%' }}
-        />
-      </div>
+      )}
     </div>
   );
 };
