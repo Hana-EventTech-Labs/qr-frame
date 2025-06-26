@@ -39,14 +39,14 @@ const preloadAllImages = async () => {
   }
 }
 
-// 완성된 프레임 이미지 데이터 (public/completed_frames/ 폴더에 이미지 저장)
+// 완성된 프레임 이미지 데이터
 const COMPLETED_FRAMES = [
-  { id: 'completed1', name: '클래식 화이트 완성본', image: './completed_frames/frame1_complete.jpg' },
-  { id: 'completed2', name: '로즈 골드 완성본', image: './completed_frames/frame2_complete.jpg' },
-  { id: 'completed3', name: '빈티지 브라운 완성본', image: './completed_frames/frame3_complete.jpg' },
-  { id: 'completed4', name: '모던 블랙 완성본', image: './completed_frames/frame4_complete.jpg' },
-  { id: 'completed5', name: '파스텔 핑크 완성본', image: './completed_frames/frame5_complete.jpg' },
-  { id: 'completed6', name: '엘레간트 블루 완성본', image: './completed_frames/frame6_complete.jpg' },
+  { id: 'completed1', name: '뀨뀨', image: './completed_frames/frame1_complete.jpg' },
+  { id: 'completed2', name: '또또', image: './completed_frames/frame2_complete.jpg' },
+  { id: 'completed3', name: '묭묭', image: './completed_frames/frame3_complete.jpg' },
+  { id: 'completed4', name: '사랑이', image: './completed_frames/frame4_complete.jpg' },
+  { id: 'completed5', name: '토깽이', image: './completed_frames/frame5_complete.jpg' },
+  { id: 'completed6', name: '효니', image: './completed_frames/frame6_complete.jpg' },
 ]
 
 const QRCodeScreen = () => {
@@ -61,14 +61,14 @@ const QRCodeScreen = () => {
   const [backgroundLoaded, setBackgroundLoaded] = useState(false)
 
   useEffect(() => {
-    // 이미지 프리로딩 (전역에서 한 번만 실행)
+    // 이미지 프리로딩
     const initializeImages = async () => {
       if (!window.imagesPreloaded) {
         console.log('🖼️ 이미지 프리로딩 시작...')
         await preloadAllImages()
         window.imagesPreloaded = true
       }
-      setBackgroundLoaded(true) // 프리로딩 완료되면 즉시 표시
+      setBackgroundLoaded(true)
     }
 
     initializeImages()
@@ -245,7 +245,6 @@ const QRCodeScreen = () => {
     }
 
     setTimeout(() => {
-      // QR 업로드된 사진이 있으면 프레임 선택 화면으로
       if (uploadedImage) {
         navigate('/frame', {
           state: {
@@ -253,16 +252,14 @@ const QRCodeScreen = () => {
             imageType: 'photo'
           }
         })
-      }
-      // 완성된 프레임을 선택했으면 바로 결제 화면으로
-      else if (selectedFrame) {
+      } else if (selectedFrame) {
         navigate('/payment', {
           state: {
-            uploadedImage: imageToUse,   // ✅ 선택된 완성 이미지 URL
+            uploadedImage: imageToUse,
             imageType: 'frame',
-            selectedFrame: null          // ✅ 반드시 null
+            selectedFrame: null
           }
-        });
+        })
       }
     }, 100)
   }
@@ -289,13 +286,6 @@ const QRCodeScreen = () => {
   }
 
   // 앱 종료 함수
-  const handleCloseApp = () => {
-    if (window.electronAPI) {
-      window.electronAPI.closeApp()
-    } else {
-      console.log('Electron API를 찾을 수 없습니다. 브라우저 환경에서는 앱을 종료할 수 없습니다.')
-    }
-  }
 
   // 프레임 이미지 렌더링 함수
   const renderFrameImage = (frame: typeof COMPLETED_FRAMES[0]) => {
@@ -304,11 +294,12 @@ const QRCodeScreen = () => {
         src={frame.image}
         alt={frame.name}
         style={{
-          width: '150px',
-          height: '120px',
+          width: '140px',
+          height: '110px',
           objectFit: 'cover',
-          borderRadius: '8px',
-          marginBottom: '10px',
+          borderRadius: '12px',
+          marginBottom: '8px',
+          border: '2px solid #d4af37',
         }}
         onError={(e) => {
           console.error('프레임 이미지 로드 실패:', frame.image);
@@ -317,16 +308,17 @@ const QRCodeScreen = () => {
           const parent = target.parentElement;
           if (parent) {
             const placeholder = document.createElement('div');
-            placeholder.style.width = '150px';
-            placeholder.style.height = '120px';
-            placeholder.style.backgroundColor = '#e5e7eb';
-            placeholder.style.borderRadius = '8px';
+            placeholder.style.width = '140px';
+            placeholder.style.height = '110px';
+            placeholder.style.backgroundColor = '#f5f1e8';
+            placeholder.style.borderRadius = '12px';
             placeholder.style.display = 'flex';
             placeholder.style.alignItems = 'center';
             placeholder.style.justifyContent = 'center';
-            placeholder.style.color = '#6b7280';
-            placeholder.style.fontSize = '14px';
-            placeholder.style.marginBottom = '10px';
+            placeholder.style.color = '#8b6914';
+            placeholder.style.fontSize = '12px';
+            placeholder.style.marginBottom = '8px';
+            placeholder.style.border = '2px solid #d4af37';
             placeholder.textContent = frame.name;
             parent.insertBefore(placeholder, target);
           }
@@ -341,6 +333,7 @@ const QRCodeScreen = () => {
     height: '100%',
     position: 'relative',
     overflow: 'hidden',
+    fontFamily: "'Noto Serif KR', serif",
   }
 
   const backgroundStyle: CSSProperties = {
@@ -357,101 +350,111 @@ const QRCodeScreen = () => {
     transition: backgroundLoaded ? 'opacity 0.3s ease-in-out' : 'none',
   }
 
-  const closeButtonStyle: CSSProperties = {
+  // 빈티지 편지지 스타일에 맞는 컨텐츠 영역
+  const contentAreaStyle: CSSProperties = {
     position: 'absolute',
-    top: '20px',
-    right: '20px',
-    width: '100px',
-    height: '100px',
+    top: '120px',
+    left: '80px',
+    right: '80px',
+    bottom: '200px',
     display: 'flex',
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '10px',
-    cursor: 'pointer',
-    zIndex: 100,
+    justifyContent: 'center',
+    zIndex: 10,
   }
 
-  const frameButtonStyle: CSSProperties = {
+  // 빈티지 스타일 제목
+  const titleStyle: CSSProperties = {
+    fontSize: '48px',
+    fontWeight: '600',
+    color: '#8b4513',
+    textAlign: 'center',
+    marginBottom: '40px',
+    fontFamily: "'Noto Serif KR', serif",
+    textShadow: '2px 2px 4px rgba(139, 69, 19, 0.3)',
+    letterSpacing: '2px',
+  }
+
+  // 설명 텍스트 스타일
+  const descriptionStyle: CSSProperties = {
+    fontSize: '24px',
+    color: '#654321',
+    textAlign: 'center',
+    marginBottom: '50px',
+    lineHeight: '1.6',
+    fontFamily: "'Noto Serif KR', serif",
+    maxWidth: '600px',
+    padding: '20px',
+    backgroundColor: 'rgba(245, 241, 232, 0.8)',
+    borderRadius: '15px',
+    border: '2px solid rgba(212, 175, 55, 0.3)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+  }
+
+  // QR 코드 또는 이미지 컨테이너
+  const mediaContainerStyle: CSSProperties = {
+    position: 'relative',
+    marginBottom: '40px',
+    padding: '20px',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: '20px',
+    border: '3px solid #d4af37',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+  }
+
+  // 빈티지 스타일 버튼
+  const vintageButtonStyle: CSSProperties = {
     padding: '16px 32px',
+    backgroundColor: '#8b4513',
+    color: '#f5f1e8',
+    border: '3px solid #d4af37',
     borderRadius: '12px',
     fontSize: '20px',
-    fontWeight: 'bold',
-    border: '3px solid #8b5cf6',
-    backgroundColor: '#f3e8ff',
-    color: '#7c3aed',
+    fontWeight: '600',
+    fontFamily: "'Noto Serif KR', serif",
     cursor: 'pointer',
-    boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
     transition: 'all 0.3s ease',
-    marginBottom: '20px',
-    position: 'absolute',
-    top: '150px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    zIndex: 10,
+    boxShadow: '0 4px 12px rgba(139, 69, 19, 0.3)',
+    textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)',
+    margin: '0 15px',
+    minWidth: '160px',
   }
 
-  const selectedImageDisplayStyle: CSSProperties = {
-    width: '600px',  // 400px → 600px
-    height: '600px', // 300px → 600px (QR 코드와 동일한 크기)
-    border: '3px solid #8b5cf6',
-    borderRadius: '12px',
+  // 액션 버튼들 컨테이너
+  const actionsStyle: CSSProperties = {
+    display: 'flex',
+    gap: '30px',
+    alignItems: 'center',
+    marginTop: '30px',
+  }
+
+  // 갤러리 버튼 (편지지 오른쪽 상단 모서리에 위치)
+  const galleryButtonStyle: CSSProperties = {
+    position: 'absolute',
+    top: '40px',
+    right: '80px',
+    padding: '12px 20px',
+    backgroundColor: '#d4af37',
+    border: '4px solid #8b4513',
+    borderRadius: '25px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f3e8ff',
-    position: 'absolute',
-    top: '50%',      // 250px → 50% (QR 코드와 동일한 위치)
-    left: '50%',
-    transform: 'translate(-50%, -50%)', // translateX(-50%) → translate(-50%, -50%)
-    zIndex: 10,
-  }
-
-  const qrContainerStyle: CSSProperties = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    zIndex: 10,
-  }
-
-  const buttonContainerStyle: CSSProperties = {
-    position: 'absolute',
-    bottom: '250px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    display: 'flex',
-    gap: '40px',
-    zIndex: 10,
-  }
-
-  const buttonStyle: CSSProperties = {
-    padding: '24px 48px',
-    borderRadius: '16px',
-    fontSize: '24px',
-    fontWeight: 'bold',
-    minWidth: '200px',
-    boxShadow: '0px 4px 10px rgba(0,0,0,0.15)',
     cursor: 'pointer',
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#8b4513',
+    boxShadow: '0 8px 20px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(255, 255, 255, 0.8)',
+    transition: 'all 0.3s ease',
+    zIndex: 20,
+    backdropFilter: 'blur(5px)',
+    fontFamily: "'Noto Serif KR', serif",
+    gap: '8px',
+    minWidth: '180px',
   }
 
-  const resetButtonStyle: CSSProperties = {
-    ...buttonStyle,
-    backgroundColor: '#e5e7eb',
-    color: '#1f2937',
-    border: '3px solid #d1d5db',
-  }
-
-  const nextButtonStyle: CSSProperties = {
-    ...buttonStyle,
-    backgroundColor: (uploadedImage || selectedFrame) ? '#ef4444' : '#cccccc',
-    color: 'white',
-    border: (uploadedImage || selectedFrame) ? '3px solid #ef4444' : '3px solid #cccccc',
-    cursor: (uploadedImage || selectedFrame) ? 'pointer' : 'not-allowed',
-  }
-
-  // 모달 스타일
+  // 모달 스타일 (빈티지 편지지 테마)
   const modalOverlayStyle: CSSProperties = {
     position: 'fixed',
     top: 0,
@@ -466,21 +469,23 @@ const QRCodeScreen = () => {
   }
 
   const modalContentStyle: CSSProperties = {
-    backgroundColor: 'white',
+    backgroundColor: '#f5f1e8',
     borderRadius: '20px',
     padding: '40px',
-    maxWidth: '800px',
+    maxWidth: '900px',
     width: '90%',
     maxHeight: '80%',
     overflow: 'auto',
     boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+    border: '3px solid #d4af37',
+    fontFamily: "'Noto Serif KR', serif",
   }
 
   const frameGridStyle: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '20px',
-    marginTop: '20px',
+    gap: '25px',
+    marginTop: '30px',
   }
 
   const frameItemStyle: CSSProperties = {
@@ -488,19 +493,55 @@ const QRCodeScreen = () => {
     flexDirection: 'column',
     alignItems: 'center',
     padding: '20px',
-    border: '2px solid #e5e7eb',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    border: '2px solid #d4af37',
+    borderRadius: '15px',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
-    backgroundColor: '#f9fafb',
   }
 
   return (
     <div style={containerStyle}>
+      {/* CSS 애니메이션 */}
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap');
+          
+          @keyframes vintage-glow {
+            0%, 100% { 
+              box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(255, 255, 255, 0.8);
+            }
+            50% { 
+              box-shadow: 0 12px 30px rgba(212, 175, 55, 0.6), 0 0 0 3px rgba(255, 255, 255, 1), 0 0 20px rgba(212, 175, 55, 0.4);
+            }
+          }
+          
+          @keyframes gentle-float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+          }
+          
+          .vintage-hover:hover {
+            background-color: #a0522d !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 69, 19, 0.4) !important;
+          }
+          
+          .gallery-hover:hover {
+            transform: scale(1.05) translateY(-2px) !important;
+            background-color: #f4d03f !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 0 3px rgba(255, 255, 255, 1) !important;
+            animation: vintage-glow 1.5s infinite;
+          }
+          
+          .media-container {
+            animation: gentle-float 3s infinite ease-in-out;
+          }
+        `}
+      </style>
+
       {/* 배경 이미지 */}
       <div style={backgroundStyle} />
-
-      {/* 백업 이미지 로드 체크 제거 - 프리로딩으로 대체 */}
 
       {/* 로딩 인디케이터 */}
       {!backgroundLoaded && (
@@ -511,133 +552,143 @@ const QRCodeScreen = () => {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+            backgroundColor: '#f5f1e8',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#64748b',
+            color: '#8b4513',
             fontSize: '32px',
             fontWeight: '600',
+            fontFamily: "'Noto Serif KR', serif",
           }}
         >
-          배경 로딩 중...
+          편지지 준비 중...
         </div>
       )}
 
-      {/* 앱 종료 버튼 */}
-      <button
-        onClick={handleCloseApp}
-        style={closeButtonStyle}
-        title="앱 종료"
-      >
-        <span style={{
-          fontSize: '24px',
-          color: 'transparent',
-          fontWeight: 'bold'
-        }}>종료</span>
-      </button>
-
-      {/* 이미지 선택 버튼 */}
+      {/* 갤러리 버튼 (편지지 오른쪽 상단) */}
       <button
         onClick={() => setShowFrameModal(true)}
-        style={frameButtonStyle}
-        onMouseOver={(e) => {
-          const target = e.target as HTMLButtonElement
-          target.style.backgroundColor = '#e9d5ff'
-          target.style.transform = 'translateX(-50%) scale(1.05)'
-        }}
-        onMouseOut={(e) => {
-          const target = e.target as HTMLButtonElement
-          target.style.backgroundColor = '#f3e8ff'
-          target.style.transform = 'translateX(-50%) scale(1)'
-        }}
+        style={galleryButtonStyle}
+        className="gallery-hover"
+        title="캐릭터로 출력하기"
       >
-        🖼️ 이미지 선택하기
+        🖼️ 캐릭터로 출력하기
       </button>
 
-      {/* 선택된 프레임 표시 */}
-      {selectedFrame && (
-        <div style={selectedImageDisplayStyle}>
-          <img
-            src={selectedFrame}
-            alt="Selected Frame"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              borderRadius: '8px',
-            }}
-            onError={(e) => {
-              console.error('선택된 프레임 이미지 로드 실패:', selectedFrame);
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.style.backgroundColor = '#e5e7eb';
-                parent.innerHTML = '<span style="color: #6b7280; font-size: 16px;">이미지를 불러올 수 없습니다</span>';
-              }
-            }}
-          />
-        </div>
-      )}
+      {/* 메인 컨텐츠 영역 */}
+      <div style={contentAreaStyle}>
+        {/* 제목 */}
+        <h1 style={titleStyle}>
+          {selectedFrame ? '선택된 캐릭터' : uploadedImage ? '업로드된 사진' : '내 사진으로 만들기'}
+        </h1>
 
-      {/* QR 코드 or 업로드된 이미지 */}
-      {!selectedFrame && (
-        <div style={qrContainerStyle}>
-          {uploadedImage ? (
+        {/* 설명 */}
+        {!uploadedImage && !selectedFrame && (
+          <div style={descriptionStyle}>
+            스마트폰으로 QR코드를 스캔하여<br />
+            소중한 사진을 업로드해주세요<br />
+            <span style={{ color: '#d4af37', fontWeight: '600' }}>
+              ※ 가로 4:3 비율 권장
+            </span>
+          </div>
+        )}
+
+        {/* QR 코드 또는 선택된 이미지 */}
+        <div style={mediaContainerStyle} className="media-container">
+          {selectedFrame ? (
+            <img
+              src={selectedFrame}
+              alt="Selected Frame"
+              style={{
+                width: '400px',
+                height: '400px',
+                objectFit: 'contain',
+                borderRadius: '12px',
+              }}
+            />
+          ) : uploadedImage ? (
             <img
               src={uploadedImage}
-              alt="Uploaded"
+              alt="Uploaded Photo"
               style={{
-                width: '500px',
-                height: '500px',
+                width: '400px',
+                height: '400px',
                 objectFit: 'contain',
-                borderRadius: '16px',
-                boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                borderRadius: '12px',
               }}
             />
           ) : qrUrl ? (
             <QRCodeSVG
               value={qrUrl}
-              size={600}
+              size={400}
               level="H"
               includeMargin
+              style={{
+                padding: '10px',
+                backgroundColor: 'white',
+                borderRadius: '12px',
+              }}
             />
           ) : (
-            <p style={{ color: '#6b7280', fontSize: '24px' }}>QR 코드를 불러오는 중...</p>
+            <div style={{
+              width: '400px',
+              height: '400px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#8b4513',
+              fontSize: '24px',
+              fontFamily: "'Noto Serif KR', serif",
+            }}>
+              QR 코드 생성 중...
+            </div>
           )}
         </div>
-      )}
 
-      {/* 버튼 영역 */}
-      <div style={buttonContainerStyle}>
-        <button
-          onClick={handleReset}
-          style={resetButtonStyle}
-        >
-          처음으로
-        </button>
-        <button
-          onClick={handleNext}
-          style={nextButtonStyle}
-          disabled={!uploadedImage && !selectedFrame}
-        >
-          다음으로
-        </button>
+        {/* 액션 버튼들 */}
+        <div style={actionsStyle}>
+          <button
+            onClick={handleReset}
+            style={{
+              ...vintageButtonStyle,
+              backgroundColor: '#6b4423',
+            }}
+            className="vintage-hover"
+          >
+            처음으로
+          </button>
+          
+          <button
+            onClick={handleNext}
+            style={{
+              ...vintageButtonStyle,
+              backgroundColor: (uploadedImage || selectedFrame) ? '#8b4513' : '#a0a0a0',
+              cursor: (uploadedImage || selectedFrame) ? 'pointer' : 'not-allowed',
+              opacity: (uploadedImage || selectedFrame) ? 1 : 0.6,
+            }}
+            className={uploadedImage || selectedFrame ? "vintage-hover" : ""}
+            disabled={!uploadedImage && !selectedFrame}
+          >
+            다음으로
+          </button>
+        </div>
       </div>
 
-      {/* 프레임 선택 모달 */}
+      {/* 프레임 갤러리 모달 */}
       {showFrameModal && (
         <div style={modalOverlayStyle} onClick={() => setShowFrameModal(false)}>
           <div style={modalContentStyle} onClick={(e) => e.stopPropagation()}>
             <h2 style={{
-              fontSize: '32px',
-              fontWeight: 'bold',
+              fontSize: '36px',
+              fontWeight: '600',
               textAlign: 'center',
               marginBottom: '20px',
-              color: '#1f2937'
+              color: '#8b4513',
+              fontFamily: "'Noto Serif KR', serif",
+              textShadow: '2px 2px 4px rgba(139, 69, 19, 0.3)',
             }}>
-              완성된 이미지를 선택하세요 🖼️
+              캐릭터 선택하기 🖼️
             </h2>
 
             <div style={frameGridStyle}>
@@ -648,23 +699,26 @@ const QRCodeScreen = () => {
                   onClick={() => handleFrameSelect(frame.id)}
                   onMouseOver={(e) => {
                     const target = e.target as HTMLDivElement
-                    target.style.borderColor = '#8b5cf6'
-                    target.style.backgroundColor = '#f3e8ff'
+                    target.style.borderColor = '#8b4513'
+                    target.style.backgroundColor = 'rgba(255, 255, 255, 1)'
                     target.style.transform = 'scale(1.05)'
+                    target.style.boxShadow = '0 8px 20px rgba(139, 69, 19, 0.3)'
                   }}
                   onMouseOut={(e) => {
                     const target = e.target as HTMLDivElement
-                    target.style.borderColor = '#e5e7eb'
-                    target.style.backgroundColor = '#f9fafb'
+                    target.style.borderColor = '#d4af37'
+                    target.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'
                     target.style.transform = 'scale(1)'
+                    target.style.boxShadow = 'none'
                   }}
                 >
                   {renderFrameImage(frame)}
                   <span style={{
                     fontSize: '16px',
                     fontWeight: '600',
-                    color: '#374151',
-                    textAlign: 'center'
+                    color: '#8b4513',
+                    textAlign: 'center',
+                    fontFamily: "'Noto Serif KR', serif",
                   }}>
                     {frame.name}
                   </span>
@@ -675,20 +729,15 @@ const QRCodeScreen = () => {
             <div style={{
               display: 'flex',
               justifyContent: 'center',
-              marginTop: '30px'
+              marginTop: '40px'
             }}>
               <button
                 onClick={() => setShowFrameModal(false)}
                 style={{
-                  padding: '12px 30px',
-                  backgroundColor: '#6b7280',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
+                  ...vintageButtonStyle,
+                  backgroundColor: '#6b4423',
                 }}
+                className="vintage-hover"
               >
                 닫기
               </button>
@@ -711,6 +760,16 @@ declare global {
       }>;
     };
     imagesPreloaded?: boolean;
+    electronAPI?: {
+      closeApp?: () => void;
+      sendPaymentRequest?: (data: any) => Promise<any>;
+      showMessageBox?: (options: {
+        type: 'error' | 'warning' | 'info' | 'question';
+        title: string;
+        message: string;
+        buttons: string[];
+      }) => Promise<any>;
+    };
   }
 }
 

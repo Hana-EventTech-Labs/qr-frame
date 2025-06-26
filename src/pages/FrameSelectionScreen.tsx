@@ -1,11 +1,11 @@
 // 로컬 프레임 템플릿 데이터 (public/frames/ 폴더 사용)
 const FRAME_TEMPLATES = [
-    { id: 'frame1', name: '클래식 화이트', preview: './frames/frame1.jpg' },
-    { id: 'frame2', name: '로즈 골드', preview: './frames/frame2.jpg' },
-    { id: 'frame3', name: '빈티지 브라운', preview: './frames/frame3.jpg' },
-    { id: 'frame4', name: '모던 블랙', preview: './frames/frame4.jpg' },
-    { id: 'frame5', name: '파스텔 핑크', preview: './frames/frame5.jpg' },
-    { id: 'frame6', name: '엘레간트 블루', preview: './frames/frame6.jpg' },
+    { id: 'frame1', name: '뀨뀨', preview: './frames/frame1.jpg' },
+    { id: 'frame2', name: '또또', preview: './frames/frame2.jpg' },
+    { id: 'frame3', name: '묭묭', preview: './frames/frame3.jpg' },
+    { id: 'frame4', name: '사랑이', preview: './frames/frame4.jpg' },
+    { id: 'frame5', name: '토깽이', preview: './frames/frame5.jpg' },
+    { id: 'frame6', name: '효니', preview: './frames/frame6.jpg' },
 ]
 
 import { useState, useEffect, CSSProperties } from 'react'
