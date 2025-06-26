@@ -1,22 +1,70 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-// 이미지 프리로딩 함수
-const preloadImage = (src: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve()
-    img.onerror = () => reject(new Error(`Failed to load image: ${src}`))
-    img.src = src
-  })
-}
+// 이미지 캐시 맵
+const imageCache = new Map<string, HTMLImageElement>();
 
-// 모든 이미지를 미리 로드하는 함수
-const preloadAllImages = async () => {
-  const images = [
-    './splash.png',
+// 이미지 프리로딩 함수 (개선됨)
+const preloadImage = (src: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    // 캐시에 이미 있으면 즉시 반환
+    if (imageCache.has(src)) {
+      resolve(imageCache.get(src)!);
+      return;
+    }
+
+    const img = new Image();
+    
+    // 고품질 렌더링 설정
+    img.style.imageRendering = 'high-quality';
+    img.decoding = 'async';
+    
+    img.onload = () => {
+      imageCache.set(src, img);
+      resolve(img);
+    };
+    
+    img.onerror = () => {
+      reject(new Error(`Failed to load image: ${src}`));
+    };
+    
+    img.src = src;
+  });
+};
+
+// 병렬 이미지 로딩 (우선순위별)
+const preloadCriticalImages = async (): Promise<void> => {
+  // 1순위: 스플래시 이미지
+  const criticalImages = ['./splash.png', './festival_logo.png'];
+  
+  try {
+    await Promise.allSettled(criticalImages.map(src => preloadImage(src)));
+    console.log('✅ 중요 이미지 프리로딩 완료');
+  } catch (error) {
+    console.warn('⚠️ 중요 이미지 일부 로딩 실패:', error);
+  }
+};
+
+const preloadSecondaryImages = async (): Promise<void> => {
+  // 2순위: 다른 화면 이미지들
+  const secondaryImages = [
     './payment.png',
     './qrscreen.png',
+    './process.png',
+    './complete.png'
+  ];
+  
+  try {
+    await Promise.allSettled(secondaryImages.map(src => preloadImage(src)));
+    console.log('✅ 보조 이미지 프리로딩 완료');
+  } catch (error) {
+    console.warn('⚠️ 보조 이미지 일부 로딩 실패:', error);
+  }
+};
+
+const preloadFrameImages = async (): Promise<void> => {
+  // 3순위: 프레임 이미지들
+  const frameImages = [
     './frames/frame1.jpg',
     './frames/frame2.jpg',
     './frames/frame3.jpg',
@@ -29,126 +77,127 @@ const preloadAllImages = async () => {
     './completed_frames/frame4_complete.jpg',
     './completed_frames/frame5_complete.jpg',
     './completed_frames/frame6_complete.jpg',
-  ]
-
+  ];
+  
   try {
-    await Promise.all(images.map(src => preloadImage(src)))
-    console.log('✅ 모든 이미지 프리로딩 완료')
-    return true
+    await Promise.allSettled(frameImages.map(src => preloadImage(src)));
+    console.log('✅ 프레임 이미지 프리로딩 완료');
   } catch (error) {
-    console.warn('⚠️ 일부 이미지 프리로딩 실패:', error)
-    return true // 실패해도 진행
+    console.warn('⚠️ 프레임 이미지 일부 로딩 실패:', error);
   }
-}
-
-// 타입 선언 (사용하지 않지만 유지)
-declare global {
-  interface Window {
-    electron?: {
-      showMessageBox: (options: {
-        type: 'error' | 'warning' | 'info' | 'question';
-        title: string;
-        message: string;
-        buttons: string[];
-      }) => Promise<any>;
-    };
-    imagesPreloaded?: boolean;
-  }
-}
+};
 
 const MainScreen = () => {
-  const navigate = useNavigate()
-  const [showContent, setShowContent] = useState(false)
-  const [imagesReady, setImagesReady] = useState(false)
-  const [splashImageExists, setSplashImageExists] = useState(true)
+  const navigate = useNavigate();
+  const [loadingStage, setLoadingStage] = useState<'initial' | 'critical' | 'secondary' | 'complete'>('initial');
+  const [splashImageUrl, setSplashImageUrl] = useState<string | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
+  const [canInteract, setCanInteract] = useState(false);
 
+  // 즉시 상호작용 가능한 최소 준비 완료 체크
+  const enableInteraction = useCallback(() => {
+    setCanInteract(true);
+    console.log('🎯 사용자 상호작용 활성화');
+  }, []);
+
+  // 우선순위별 로딩 처리
   useEffect(() => {
-    // 이미지 프리로딩 및 초기화
     const initializeApp = async () => {
+      console.log('🚀 앱 초기화 시작');
+      
+      // 즉시 로딩 표시
+      setLoadingStage('initial');
+      
       try {
-        // 전역에서 한 번만 프리로딩 실행
-        if (!window.imagesPreloaded) {
-          console.log('🖼️ 앱 시작 - 모든 이미지 프리로딩 시작...')
-          await preloadAllImages()
-          window.imagesPreloaded = true
+        // 1단계: 중요 이미지만 먼저 로드 (빠른 표시용)
+        setLoadingStage('critical');
+        await preloadCriticalImages();
+        
+        // 스플래시 이미지 확인 및 설정
+        if (imageCache.has('./splash.png')) {
+          setSplashImageUrl('./splash.png');
+        } else if (imageCache.has('./festival_logo.png')) {
+          setSplashImageUrl('./festival_logo.png');
+        } else {
+          setShowFallback(true);
         }
         
-        // 이미지 준비 완료
-        setImagesReady(true)
+        // 최소 준비 완료 - 사용자 상호작용 허용
+        enableInteraction();
         
-        // 0.5초 후 컨텐츠 표시 (프리로딩 후 빠른 표시)
+        // 2단계: 보조 이미지 백그라운드 로딩
+        setLoadingStage('secondary');
+        preloadSecondaryImages(); // await 없이 백그라운드 실행
+        
+        // 3단계: 프레임 이미지 백그라운드 로딩
+        preloadFrameImages(); // await 없이 백그라운드 실행
+        
+        // 로딩 완료 표시
         setTimeout(() => {
-          setShowContent(true)
-        }, 500)
+          setLoadingStage('complete');
+          console.log('🎉 앱 초기화 완료');
+        }, 500);
         
       } catch (error) {
-        console.error('앱 초기화 중 오류:', error)
-        // 에러가 있어도 진행
-        setImagesReady(true)
-        setShowContent(true)
+        console.error('앱 초기화 중 오류:', error);
+        setShowFallback(true);
+        enableInteraction(); // 오류가 있어도 상호작용 허용
       }
-    }
+    };
 
-    initializeApp()
+    initializeApp();
+  }, [enableInteraction]);
 
-    // 키오스크 검증 로직 주석 처리
-    // validateKioskOnStart()
-  }, [])
-
-  // 키오스크 검증 함수들 주석 처리
-  /*
-  const validateKioskOnStart = async () => {
-    try {
-      console.log('🚀 키오스크 유효성 검증 시작...')
-      // ... 검증 로직 ...
-    } catch (error) {
-      console.error('키오스크 검증 중 오류:', error)
-    }
-  }
-  */
-
-  // 이미지 준비 후 클릭으로 시작 가능
+  // 클릭 이벤트 처리 (빠른 응답)
   useEffect(() => {
-    if (imagesReady && showContent) {
-      const handleClickAnywhere = () => {
-        navigate('/upload')
-      }
+    if (!canInteract) return;
 
-      window.addEventListener('click', handleClickAnywhere)
-      window.addEventListener('touchstart', handleClickAnywhere)
+    const handleClickAnywhere = () => {
+      console.log('🖱️ 화면 클릭 감지');
+      navigate('/upload');
+    };
 
-      return () => {
-        window.removeEventListener('click', handleClickAnywhere)
-        window.removeEventListener('touchstart', handleClickAnywhere)
-      }
-    }
-  }, [navigate, imagesReady, showContent])
+    // 이벤트 리스너 등록
+    const options = { passive: true, capture: true };
+    window.addEventListener('click', handleClickAnywhere, options);
+    window.addEventListener('touchstart', handleClickAnywhere, options);
 
-  // splash.png 존재 여부 확인
-  useEffect(() => {
-    const checkSplashImage = async () => {
-      try {
-        await preloadImage('./splash.png')
-        setSplashImageExists(true)
-      } catch {
-        console.log('splash.png를 찾을 수 없어 festival_logo.png를 사용합니다.')
-        setSplashImageExists(false)
-      }
-    }
-    
-    if (!window.imagesPreloaded) {
-      checkSplashImage()
-    }
-  }, [])
+    return () => {
+      window.removeEventListener('click', handleClickAnywhere, options);
+      window.removeEventListener('touchstart', handleClickAnywhere, options);
+    };
+  }, [navigate, canInteract]);
 
-  // 배경 이미지 결정
-  const getBackgroundImage = () => {
-    if (splashImageExists) {
-      return 'url(./splash.png)'
-    } else {
-      return 'url(./festival_logo.png)'
+  // 로딩 상태별 표시 내용
+  const getLoadingMessage = () => {
+    switch (loadingStage) {
+      case 'initial':
+        return '시작 중...';
+      case 'critical':
+        return '화면 준비 중...';
+      case 'secondary':
+        return
+      case 'complete':
+        return '준비 완료!';
+      default:
+        return '로딩 중...';
     }
-  }
+  };
+
+  const getLoadingProgress = () => {
+    switch (loadingStage) {
+      case 'initial':
+        return 10;
+      case 'critical':
+        return 40;
+      case 'secondary':
+        return 70;
+      case 'complete':
+        return 100;
+      default:
+        return 0;
+    }
+  };
 
   return (
     <div
@@ -157,28 +206,31 @@ const MainScreen = () => {
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
-        cursor: (imagesReady && showContent) ? 'pointer' : 'default',
+        cursor: canInteract ? 'pointer' : 'default',
+        transition: 'cursor 0.3s ease',
       }}
     >
-      {/* 전체 화면 배경 이미지 */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundImage: imagesReady ? getBackgroundImage() : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          opacity: (imagesReady && showContent) ? 1 : 0,
-          transition: 'opacity 0.5s ease-in-out',
-        }}
-      />
+      {/* 메인 배경 이미지 */}
+      {splashImageUrl && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: `url(${splashImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: loadingStage === 'complete' ? 1 : 0.8,
+            transition: 'opacity 0.5s ease-in-out',
+          }}
+        />
+      )}
 
-      {/* splash.png와 festival_logo.png 모두 실패할 경우 폴백 */}
-      {!splashImageExists && imagesReady && (
+      {/* 폴백 배경 (이미지 로드 실패시) */}
+      {showFallback && !splashImageUrl && (
         <div
           style={{
             position: 'absolute',
@@ -194,16 +246,14 @@ const MainScreen = () => {
             fontSize: '48px',
             fontWeight: 'bold',
             textShadow: '0 4px 8px rgba(0,0,0,0.3)',
-            opacity: showContent ? 1 : 0,
-            transition: 'opacity 0.5s ease-in-out',
           }}
         >
-          포토카드 키오스크
+          Be-My-Friends 키오스크
         </div>
       )}
 
-      {/* 로딩 인디케이터 (이미지 준비 전까지 표시) */}
-      {!imagesReady && (
+      {/* 로딩 오버레이 (초기 로딩시에만 표시) */}
+      {loadingStage !== 'complete' && (
         <div
           style={{
             position: 'absolute',
@@ -211,28 +261,65 @@ const MainScreen = () => {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+            background: 'rgba(0, 0, 0, 0.5)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#64748b',
+            color: 'white',
             fontSize: '32px',
             fontWeight: '600',
             zIndex: 1000,
+            backdropFilter: 'blur(2px)',
           }}
         >
-          <div style={{
-            animation: 'pulse 2s ease-in-out infinite',
-            marginBottom: '20px',
-          }}>
-            🖼️
+          {/* 로딩 아이콘 */}
+          <div
+            style={{
+              fontSize: '64px',
+              marginBottom: '20px',
+              animation: 'pulse 2s ease-in-out infinite',
+            }}
+          >
+            📸
           </div>
-          <div>앱 준비 중...</div>
+          
+          {/* 로딩 메시지 */}
+          <div style={{ marginBottom: '30px' }}>
+            {getLoadingMessage()}
+          </div>
+          
+          {/* 프로그레스 바 */}
+          <div
+            style={{
+              width: '300px',
+              height: '8px',
+              backgroundColor: 'rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              overflow: 'hidden',
+              marginBottom: '20px',
+            }}
+          >
+            <div
+              style={{
+                width: `${getLoadingProgress()}%`,
+                height: '100%',
+                backgroundColor: '#4ade80',
+                borderRadius: '4px',
+                transition: 'width 0.5s ease-out',
+                boxShadow: '0 0 10px rgba(74, 222, 128, 0.5)',
+              }}
+            />
+          </div>
+          
+          {/* 진행 퍼센트 */}
+          <div style={{ fontSize: '18px', opacity: 0.8 }}>
+            {getLoadingProgress()}%
+          </div>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default MainScreen
+export default MainScreen;

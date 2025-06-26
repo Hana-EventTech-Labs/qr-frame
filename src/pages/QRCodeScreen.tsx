@@ -586,10 +586,10 @@ const QRCodeScreen = () => {
         {/* 설명 */}
         {!uploadedImage && !selectedFrame && (
           <div style={descriptionStyle}>
-            스마트폰으로 QR코드를 스캔하여<br />
-            소중한 사진을 업로드해주세요<br />
+            {/* 스마트폰으로 QR코드를 스캔하여<br />
+            소중한 사진을 업로드해주세요<br /> */}
             <span style={{ color: '#d4af37', fontWeight: '600' }}>
-              ※ 가로 4:3 비율 권장
+              ※ 세로 4:3 비율 권장
             </span>
           </div>
         )}

@@ -1,11 +1,23 @@
 {
-  "name": "photo-frame-kiosk",
+  "name": "be-my-friends",
+  "productName": "Be-My-Friends",
   "version": "1.0.0",
+  "description": "QR코드로 사진을 업로드하고 즉석에서 포토카드를 인쇄하는 키오스크 시스템",
+  "author": {
+    "name": "하나플랫폼",
+    "email": "hanalabs@hanapf.kr"
+  },
   "private": true,
   "main": "electron/main.js",
   "type": "commonjs",
   "build": {
+    "appId": "com.yourcompany.bemyfriends",
+    "productName": "Be-My-Friends",
+    "copyright": "Copyright © 2024 ${author}",
     "asar": false,
+    "directories": {
+      "output": "out"
+    },
     "files": [
       "dist/**",
       {
@@ -25,20 +37,49 @@
       }
     ],
     "win": {
-      "target": "portable"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker",
+      "publisherName": "하나플랫폼",
+      "verifyUpdateCodeSignature": false
     },
-    "directories": {
-      "output": "out"
-    }
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Be-My-Friends",
+      "artifactName": "${productName}-${version}-Setup.${ext}",
+      "deleteAppDataOnUninstall": true
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
+    },
+    "compression": "maximum",
+    "removePackageScripts": true
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "start": "electron-forge start",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build --mode production",
+    "build:fast": "vite build --mode production --minify false",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "npm run build && electron-builder",
-    "clean": "rd /s /q dist out && echo Cleaned!"
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron . --dev\"",
+    "electron:dev:fast": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron . --dev --no-sandbox --disable-gpu\"",
+    "electron:build": "npm run build && electron-builder --publish=never",
+    "electron:build:fast": "npm run build:fast && electron-builder --publish=never",
+    "electron:dist": "npm run build && electron-builder --publish=never --win",
+    "clean": "rd /s /q dist out && echo Cleaned!",
+    "preload": "node scripts/preload-images.js"
   },
   "dependencies": {
     "cross-fetch": "^4.0.0",
