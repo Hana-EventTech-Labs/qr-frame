@@ -14,34 +14,34 @@ const preloadImage = (src: string): Promise<HTMLImageElement> => {
     }
 
     const img = new Image();
-    
+
     // 고품질 렌더링 설정
     img.style.imageRendering = 'high-quality';
     img.decoding = 'async';
-    
+
     img.onload = () => {
       imageCache.set(src, img);
       resolve(img);
     };
-    
+
     img.onerror = () => {
       reject(new Error(`Failed to load image: ${src}`));
     };
-    
+
     img.src = src;
   });
 };
 
 // 병렬 이미지 로딩 (우선순위별)
 const preloadCriticalImages = async (): Promise<void> => {
-  // 1순위: 스플래시 이미지
-  const criticalImages = ['./splash.png', './festival_logo.png'];
-  
+  // 필수 이미지만 로딩
+  const criticalImages = ['./splash.png']; // festival_logo.png 제거
+
   try {
     await Promise.allSettled(criticalImages.map(src => preloadImage(src)));
-    console.log('✅ 중요 이미지 프리로딩 완료');
+    console.log('✅ 필수 이미지 프리로딩 완료');
   } catch (error) {
-    console.warn('⚠️ 중요 이미지 일부 로딩 실패:', error);
+    console.warn('⚠️ 필수 이미지 로딩 실패:', error);
   }
 };
 
@@ -53,7 +53,7 @@ const preloadSecondaryImages = async (): Promise<void> => {
     './process.png',
     './complete.png'
   ];
-  
+
   try {
     await Promise.allSettled(secondaryImages.map(src => preloadImage(src)));
     console.log('✅ 보조 이미지 프리로딩 완료');
@@ -78,7 +78,7 @@ const preloadFrameImages = async (): Promise<void> => {
     './completed_frames/frame5_complete.jpg',
     './completed_frames/frame6_complete.jpg',
   ];
-  
+
   try {
     await Promise.allSettled(frameImages.map(src => preloadImage(src)));
     console.log('✅ 프레임 이미지 프리로딩 완료');
@@ -104,40 +104,40 @@ const MainScreen = () => {
   useEffect(() => {
     const initializeApp = async () => {
       console.log('🚀 앱 초기화 시작');
-      
+
       // 즉시 로딩 표시
       setLoadingStage('initial');
-      
+
       try {
         // 1단계: 중요 이미지만 먼저 로드 (빠른 표시용)
         setLoadingStage('critical');
         await preloadCriticalImages();
-        
+
         // 스플래시 이미지 확인 및 설정
         if (imageCache.has('./splash.png')) {
           setSplashImageUrl('./splash.png');
-        } else if (imageCache.has('./festival_logo.png')) {
-          setSplashImageUrl('./festival_logo.png');
-        } else {
-          setShowFallback(true);
         }
-        
+
         // 최소 준비 완료 - 사용자 상호작용 허용
+        // 즉시 상호작용 허용하고 완료 처리
         enableInteraction();
-        
-        // 2단계: 보조 이미지 백그라운드 로딩
-        setLoadingStage('secondary');
-        preloadSecondaryImages(); // await 없이 백그라운드 실행
-        
+        setLoadingStage('complete'); // 'secondary' → 'complete'로 변경
+
+        // 나머지 이미지는 백그라운드에서 천천히 로딩
+        setTimeout(() => {
+          preloadSecondaryImages();
+          preloadFrameImages();
+        }, 100);
+
         // 3단계: 프레임 이미지 백그라운드 로딩
         preloadFrameImages(); // await 없이 백그라운드 실행
-        
+
         // 로딩 완료 표시
         setTimeout(() => {
           setLoadingStage('complete');
           console.log('🎉 앱 초기화 완료');
         }, 500);
-        
+
       } catch (error) {
         console.error('앱 초기화 중 오류:', error);
         setShowFallback(true);
@@ -283,12 +283,12 @@ const MainScreen = () => {
           >
             📸
           </div>
-          
+
           {/* 로딩 메시지 */}
           <div style={{ marginBottom: '30px' }}>
             {getLoadingMessage()}
           </div>
-          
+
           {/* 프로그레스 바 */}
           <div
             style={{
@@ -311,7 +311,7 @@ const MainScreen = () => {
               }}
             />
           </div>
-          
+
           {/* 진행 퍼센트 */}
           <div style={{ fontSize: '18px', opacity: 0.8 }}>
             {getLoadingProgress()}%

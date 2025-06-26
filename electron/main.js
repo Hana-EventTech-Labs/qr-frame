@@ -195,7 +195,7 @@ function createWindow() {
         win.focus();
         win.setAlwaysOnTop(true, 'screen-saver');
       }
-    }, 1500); // 1.5초로 조금 늘림 (스플래시를 좀 더 보여주기 위해)
+    }, 500);
   });
 
   // 메인 윈도우가 닫히면 앱 종료
