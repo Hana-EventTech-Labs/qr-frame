@@ -6,7 +6,7 @@ interface PrintLogData {
   }
   
   class PrintLogService {
-    private readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app';
+    private readonly API_BASE_URL = 'https://kiosk-proxy-server.onrender.com';
   
     /**
      * 인쇄 완료 로그를 서버에 전송
