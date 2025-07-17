@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 
+// 프록시 서버 URL
+const PROXY_SERVER_URL = 'https://kiosk-proxy-server.onrender.com'
+
 // 이미지 프리로딩 함수
 const preloadImage = (src: string): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -76,7 +79,7 @@ const QRCodeScreen = () => {
     const createSession = async () => {
       try {
         const res = await fetch(
-          'https://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app/api/events/register?event_name=parents_day',
+          `${PROXY_SERVER_URL}/api/events/register?event_name=parents_day`,
           {
             method: 'POST',
           }
@@ -87,7 +90,7 @@ const QRCodeScreen = () => {
 
         // WebSocket 연결
         const ws = new WebSocket(
-          `wss://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app/ws/kiosk/${data.event_id}`
+          `wss://kiosk-proxy-server.onrender.com/ws/kiosk/${data.event_id}`
         )
         socketRef.current = ws
 
@@ -95,11 +98,18 @@ const QRCodeScreen = () => {
         ws.onclose = () => console.log('❌ WebSocket 종료됨')
         ws.onerror = (e) => console.error('WebSocket 오류:', e)
         ws.onmessage = async (msg) => {
-          const data = JSON.parse(msg.data)
+          let messageData = msg.data
+          
+          // Blob인 경우 텍스트로 변환
+          if (messageData instanceof Blob) {
+            messageData = await messageData.text()
+          }
+          
+          const data = JSON.parse(messageData)
           console.log('📥 WebSocket 메시지:', data)
 
           if (data.type === 'image_uploaded') {
-            const imageUrl = `https://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app${data.image_url}`
+            const imageUrl = `${PROXY_SERVER_URL}${data.image_url}`
 
             try {
               const enhancedImageUrl = await enhanceImageQuality(imageUrl)
@@ -234,7 +244,7 @@ const QRCodeScreen = () => {
     if (eventId) {
       try {
         await fetch(
-          `https://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app/api/events/${eventId}`,
+          `${PROXY_SERVER_URL}/api/events/${eventId}`,
           {
             method: 'DELETE',
           }
@@ -272,7 +282,7 @@ const QRCodeScreen = () => {
     if (eventId) {
       try {
         await fetch(
-          `https://port-0-kiosk-builder-m47pn82w3295ead8.sel4.cloudtype.app/api/events/${eventId}`,
+          `${PROXY_SERVER_URL}/api/events/${eventId}`,
           {
             method: 'DELETE',
           }
@@ -284,8 +294,6 @@ const QRCodeScreen = () => {
 
     navigate('/')
   }
-
-  // 앱 종료 함수
 
   // 프레임 이미지 렌더링 함수
   const renderFrameImage = (frame: typeof COMPLETED_FRAMES[0]) => {
@@ -586,8 +594,6 @@ const QRCodeScreen = () => {
         {/* 설명 */}
         {!uploadedImage && !selectedFrame && (
           <div style={descriptionStyle}>
-            {/* 스마트폰으로 QR코드를 스캔하여<br />
-            소중한 사진을 업로드해주세요<br /> */}
             <span style={{ color: '#d4af37', fontWeight: '600' }}>
               ※ 세로 4:3 비율 권장
             </span>
